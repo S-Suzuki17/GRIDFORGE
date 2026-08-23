@@ -449,12 +449,25 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
                 {/* Ranked Match */}
                 <button 
-                    onClick={() => setPendingAction({ type: 'ranked' })}
-                    className="group relative w-full p-4 bg-fuchsia-950/40 border border-fuchsia-500/50 hover:bg-fuchsia-900/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(217,70,239,0.3)]">
-                    <div className="absolute inset-0 w-1 bg-fuchsia-500 group-hover:w-full transition-all duration-300 opacity-10" />
+                    onClick={() => {
+                        if (user.type === 'guest') {
+                            alert(lang === 'ja' ? 'ランクマッチをプレイするにはアカウント登録（IDの入力）が必要です。タイトル画面に戻ってIDを入力してください。' : 'Please register an account (by typing an ID) to play Ranked Matches.');
+                            return;
+                        }
+                        setPendingAction({ type: 'ranked' });
+                    }}
+                    className={`group relative w-full p-4 border transition-all rounded text-left overflow-hidden ${
+                        user.type === 'guest'
+                            ? 'bg-gray-900/40 border-gray-600/50 cursor-not-allowed'
+                            : 'bg-fuchsia-950/40 border-fuchsia-500/50 hover:bg-fuchsia-900/30 hover:shadow-[0_0_20px_rgba(217,70,239,0.3)]'
+                    }`}>
+                    <div className={`absolute inset-0 w-1 ${user.type === 'guest' ? 'bg-gray-600' : 'bg-fuchsia-500 group-hover:w-full'} transition-all duration-300 opacity-10`} />
                     <div className="relative z-10 flex justify-between items-center">
-                        <span className="text-xl font-bold text-fuchsia-400 tracking-wider">🏆 {t.rankedMatch}</span>
-                        <span className="text-xs text-fuchsia-500 border border-fuchsia-500/50 px-2 py-1 rounded">{t.rated}</span>
+                        <div className="flex flex-col">
+                            <span className={`text-xl font-bold tracking-wider ${user.type === 'guest' ? 'text-gray-500' : 'text-fuchsia-400'}`}>🏆 {t.rankedMatch}</span>
+                            {user.type === 'guest' && <span className="text-xs text-red-500 mt-1">※ {lang === 'ja' ? '登録必須' : 'Account Required'}</span>}
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded border ${user.type === 'guest' ? 'text-gray-500 border-gray-500/50' : 'text-fuchsia-500 border-fuchsia-500/50'}`}>{t.rated}</span>
                     </div>
                 </button>
 
