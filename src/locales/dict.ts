@@ -36,6 +36,9 @@ export const dict = {
         loginFailed: "Login failed. ID not found.",
         // Match Menu
         selectLevel: "Select Game Mode",
+        selectMode: "Select Game Mode",
+        vsCpu: "VS CPU",
+        vsCpuDesc: "Quantum IS-MCTS AI Engine",
         selectTimeLimit: "Select Time Control",
         adCloudTitle: "Cloud Compute Required",
         adCloudDesc: "VS CPU uses high-performance AI cloud compute. Watch a short ad to start the match!",
@@ -137,6 +140,9 @@ export const dict = {
         loginFailed: "ログイン失敗。IDが見つかりません。",
         // Match Menu
         selectLevel: "対局モードを選択",
+        selectMode: "対局モードを選択",
+        vsCpu: "VS CPU",
+        vsCpuDesc: "量子ISMCTS AIエンジン搭載",
         selectTimeLimit: "持ち時間を選択",
         adCloudTitle: "クラウドAI演算の準備",
         adCloudDesc: "VS CPU対戦は高性能AIサーバーを使用します。短い広告を視聴してマッチを開始します。",

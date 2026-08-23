@@ -18,7 +18,7 @@ interface LevelSelectProps {
 
 export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onBack }: LevelSelectProps) {
     const t = dict[lang];
-    const [adLevel, setAdLevel] = React.useState<number | null>(null);
+    const [showAdModal, setShowAdModal] = React.useState(false);
     const [adProgress, setAdProgress] = React.useState(0);
     const [showOnlineMenu, setShowOnlineMenu] = React.useState(false);
     const [joinRoomId, setJoinRoomId] = React.useState('');
@@ -60,30 +60,24 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         setLoadingReplays(false);
     };
 
-    const handleLevelClick = (level: number) => {
-        if (level >= 4) {
-            setAdLevel(level);
-            setAdProgress(0);
-            
-            const interval = setInterval(() => {
-                setAdProgress(prev => {
-                    if (prev >= 100) {
-                        clearInterval(interval);
-                        return 100;
-                    }
-                    return prev + 2;
-                });
-            }, 50);
-        } else {
-            setPendingAction({ type: 'cpu', level });
-        }
+    const handleVsCpuClick = () => {
+        setShowAdModal(true);
+        setAdProgress(0);
+        
+        const interval = setInterval(() => {
+            setAdProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                }
+                return prev + 2;
+            });
+        }, 50);
     };
 
     const handleAdFinish = () => {
-        if (adLevel) {
-            setPendingAction({ type: 'cpu', level: adLevel });
-            setAdLevel(null);
-        }
+        setPendingAction({ type: 'cpu', level: 5 });
+        setShowAdModal(false);
     };
 
     const cancelSearch = React.useCallback(() => {
@@ -214,7 +208,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             )}
 
             {/* Ad overlay */}
-            {adLevel && (
+            {showAdModal && (
                 <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
                     <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-md w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
                         <h3 className="text-xl font-bold text-cyan-300 mb-4 flex items-center justify-center gap-2">
@@ -276,21 +270,21 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             <div className="text-center mb-12">
                 <p className="text-cyan-500 mb-2">Welcome, Agent {user.name} [{user.id}]</p>
                 <h2 className="text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-                    {t.selectLevel}
+                    {t.selectMode}
                 </h2>
             </div>
 
             <div className="w-full max-w-md flex flex-col gap-4 mt-8">
                 {/* VS CPU */}
                 <button 
-                    onClick={() => handleLevelClick(5)}
+                    onClick={handleVsCpuClick}
                     className="group relative w-full p-4 bg-black/40 border border-red-500/50 hover:bg-red-950/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
                     <div className="absolute inset-0 w-1 bg-red-500 group-hover:w-full transition-all duration-300 opacity-10" />
                     <div className="relative z-10 flex flex-col">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-xl font-bold text-red-400 tracking-wider">🤖 VS CPU</span>
+                            <span className="text-xl font-bold text-red-400 tracking-wider">🤖 {t.vsCpu}</span>
                         </div>
-                        <span className="text-xs text-red-500/70">{t.lv5Desc}</span>
+                        <span className="text-xs text-red-500/70">{t.vsCpuDesc}</span>
                     </div>
                 </button>
 
