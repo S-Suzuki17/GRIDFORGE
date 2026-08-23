@@ -63,12 +63,18 @@ export async function saveGameRecord(record: GameRecord): Promise<string | null>
     return data?.id ?? null;
 }
 
-export async function getGameRecords(limit: number = 20): Promise<GameRecord[]> {
-    const { data, error } = await supabase
+export async function getGameRecords(limit: number = 20, userId?: string): Promise<GameRecord[]> {
+    let query = supabase
         .from('game_records')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
+
+    if (userId) {
+        query = query.or(`white_id.eq.${userId},black_id.eq.${userId}`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Failed to fetch game records:', error);

@@ -27,6 +27,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [showReplays, setShowReplays] = React.useState(false);
     const [replays, setReplays] = React.useState<GameRecord[]>([]);
     const [loadingReplays, setLoadingReplays] = React.useState(false);
+    const [replayCategory, setReplayCategory] = React.useState<'global' | 'mine'>('global');
     const [showLeaderboard, setShowLeaderboard] = React.useState(false);
     const [leaderboard, setLeaderboard] = React.useState<Profile[]>([]);
     const [loadingLeaderboard, setLoadingLeaderboard] = React.useState(false);
@@ -73,11 +74,16 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         loadLeaderboard(category);
     };
 
-    const loadReplays = async () => {
+    const loadReplays = async (category: 'global' | 'mine') => {
         setLoadingReplays(true);
-        const data = await getGameRecords(10);
+        const data = await getGameRecords(10, category === 'mine' ? user.id : undefined);
         setReplays(data);
         setLoadingReplays(false);
+    };
+
+    const handleReplayCategoryChange = (category: 'global' | 'mine') => {
+        setReplayCategory(category);
+        loadReplays(category);
     };
 
     const handleVsCpuClick = () => {
@@ -518,7 +524,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     <button 
                         onClick={() => {
                             setShowReplays(true);
-                            loadReplays();
+                            loadReplays(replayCategory);
                         }}
                         className="group relative w-full p-4 bg-gray-900/40 border border-gray-500/50 hover:bg-gray-800/50 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(156,163,175,0.3)]">
                         <div className="absolute inset-0 w-1 bg-gray-500 group-hover:w-full transition-all duration-300 opacity-10" />
@@ -528,11 +534,34 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     </button>
                 ) : (
                     <div className="p-4 bg-black/60 border border-gray-500/50 rounded flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
+                        <div className="flex justify-between items-center mb-1">
                             <span className="text-gray-400 font-bold text-sm">📺 {t.watchReplays}</span>
                             <button onClick={() => setShowReplays(false)} className="text-gray-500 hover:text-white">✕</button>
                         </div>
                         
+                        <div className="flex gap-1 p-1 bg-black/40 border border-gray-700/50 rounded">
+                            <button
+                                onClick={() => handleReplayCategoryChange('global')}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
+                                    replayCategory === 'global'
+                                        ? 'bg-gray-700 text-white shadow-[0_0_10px_rgba(156,163,175,0.5)]'
+                                        : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                🌏 Global
+                            </button>
+                            <button
+                                onClick={() => handleReplayCategoryChange('mine')}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
+                                    replayCategory === 'mine'
+                                        ? 'bg-gray-700 text-white shadow-[0_0_10px_rgba(156,163,175,0.5)]'
+                                        : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                👤 My Games
+                            </button>
+                        </div>
+
                         {loadingReplays ? (
                             <div className="text-center text-gray-500 py-4 animate-pulse">{t.loading}</div>
                         ) : replays.length === 0 ? (
