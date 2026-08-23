@@ -1,5 +1,5 @@
 import { PieceType } from '../config/gameConfig';
-import { Token } from '../types/game';
+import { Token } from './GameEngine';
 
 export class IdentityPool {
     // 未確定のまま残っている各駒のストック数

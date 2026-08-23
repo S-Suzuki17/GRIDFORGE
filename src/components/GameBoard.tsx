@@ -148,7 +148,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 if (payload.type === 'emote') {
                     // Using a small delay or directly triggering
                     triggerEmote(payload.player, payload.emote);
-                    soundManager.play('move');
+                    playMoveSound();
                 }
             })
             .subscribe((status) => {
@@ -158,7 +158,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [roomId, user, tokens, onlineRole, triggerEmote]);
+    }, [roomId, user, tokens, onlineRole, triggerEmote, playMoveSound]);
 
     // CPUターンの処理
     useEffect(() => {
@@ -530,9 +530,11 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    const playerName = user?.name || 'Player';
+    const opponentName = roomId ? 'Opponent' : `CPU`;
     const myRole = onlineRole || 'white';
-    const whiteName = myRole === 'white' ? (user?.name || 'Player') : (roomId ? 'Opponent' : 'CPU');
-    const blackName = myRole === 'black' ? (user?.name || 'Player') : (roomId ? 'Opponent' : 'CPU');
+    const whiteName = myRole === 'white' ? playerName : opponentName;
+    const blackName = myRole === 'black' ? playerName : opponentName;
 
     return (
         <div className="flex flex-col items-center w-full max-w-[800px] relative">
@@ -579,9 +581,15 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 <div className={`text-xl font-bold flex flex-col items-end gap-1 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'} relative`}>
                     <div className="flex items-center gap-2">
                         {isCheck && currentTurn === 'black' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
-                        {opponentName} 🟥
+                        {blackName} 🟥
                     </div>
                     <span className="text-2xl font-mono">{formatTime(timeLeftBlack)}</span>
+                    {/* Black Emote */}
+                    {activeEmotes.black && (
+                        <div className="absolute top-10 right-0 bg-white border-2 border-red-500 rounded-2xl rounded-tr-none px-3 py-1 shadow-lg z-50 animate-bounce">
+                            <span className="text-2xl">{EMOTES[activeEmotes.black].emoji}</span>
+                        </div>
+                    )}
                 </div>
             </div>
             
@@ -599,8 +607,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     </div>
                     <div className={`text-4xl font-bold mb-12 ${winner === 'white_wins' ? 'text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.8)]' : 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]'}`}>
                         {winner === 'white_wins' 
-                            ? `${playerName} (${t.whiteWon})` 
-                            : `${opponentName} (${t.blackWon})`}
+                            ? `${whiteName} (${t.whiteWon})` 
+                            : `${blackName} (${t.blackWon})`}
                     </div>
                     <div className="flex gap-4 mt-8">
                         <button 

@@ -123,7 +123,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         
         const triggerMatchNotification = () => {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                new Notification(t.opponentFound || 'Match Found!', {
+                new Notification(lang === 'ja' ? 'マッチング成功！' : 'Match Found!', {
                     body: 'Your opponent is ready. Click to return to game!',
                     icon: '/icon-192.png'
                 });
@@ -185,7 +185,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     await channel.track({ userId: user.id, name: user.name });
                 }
             });
-    }, [user, onOnlineMatch, cancelSearch, t.opponentFound]);
+    }, [user, onOnlineMatch, cancelSearch, lang]);
 
     const handleTimeControlConfirm = (tc: TimeControl) => {
         if (!pendingAction) return;
