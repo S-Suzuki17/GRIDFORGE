@@ -43,7 +43,18 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
     const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
+    const [fetchedOpponentName, setFetchedOpponentName] = useState<string | null>(null);
+
+    // Fetch opponent name
+    useEffect(() => {
+        if (opponentId && !opponentId.startsWith('GUEST-')) {
+            import('../lib/supabaseClient').then(({ supabase }) => {
+                supabase.from('profiles').select('name').eq('id', opponentId).single().then(({ data }) => {
+                    if (data?.name) setFetchedOpponentName(data.name);
+                });
+            });
+        }
+    }, [opponentId]);
     const [isCheck, setIsCheck] = useState<boolean>(false);
     const [showCheckWarning, setShowCheckWarning] = useState<boolean>(false);
     const [winner, setWinner] = useState<'white_wins' | 'black_wins' | null>(null);
@@ -323,8 +334,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 const blackId = onlineRole === 'black' ? user?.id : (roomId ? opponentId : undefined);
 
                 const record: GameRecord = {
-                    white_player: onlineRole === 'black' ? 'Opponent' : (user?.name || 'Guest'),
-                    black_player: onlineRole === 'white' ? 'Opponent' : (roomId ? (user?.name || 'Guest') : `CPU`),
+                    white_player: onlineRole === 'black' ? (fetchedOpponentName || (opponentId?.startsWith('GUEST-') ? 'Guest' : 'Opponent')) : (user?.name || 'Guest'),
+                    black_player: onlineRole === 'white' ? (fetchedOpponentName || (opponentId?.startsWith('GUEST-') ? 'Guest' : 'Opponent')) : (roomId ? (user?.name || 'Guest') : `CPU`),
                     white_id: whiteId,
                     black_id: blackId,
                     winner,
@@ -339,7 +350,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             };
             saveRecord();
         }
-    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole, timeControl, opponentId]);
+    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole, timeControl, opponentId, fetchedOpponentName]);
 
     // 選択中のトークンが移動可能なマス（候補）を算出
     const validMoves = useMemo(() => {
@@ -576,7 +587,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     };
 
     const playerName = user?.name || 'Player';
-    const opponentName = roomId ? 'Opponent' : `CPU`;
+    const fallbackOpponent = (opponentId && opponentId.startsWith('GUEST-')) ? 'Guest' : 'Opponent';
+    const opponentName = roomId ? (fetchedOpponentName || fallbackOpponent) : `CPU`;
     const myRole = onlineRole === 'spectator' ? 'white' : (onlineRole || 'white');
     const whiteName = onlineRole === 'spectator' ? 'White Player' : (myRole === 'white' ? playerName : opponentName);
     const blackName = onlineRole === 'spectator' ? 'Black Player' : (myRole === 'black' ? playerName : opponentName);
