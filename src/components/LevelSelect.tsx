@@ -31,7 +31,16 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [loadingLeaderboard, setLoadingLeaderboard] = React.useState(false);
     const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl | 'all'>('all');
     const [pendingAction, setPendingAction] = React.useState<{ type: 'cpu' | 'ranked' | 'random' | 'host' | 'join'; level?: number; roomId?: string } | null>(null);
+    const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    React.useEffect(() => {
+        import('../lib/gameRecordService').then(({ ensureProfile }) => {
+            ensureProfile(user.id, user.name).then(profile => {
+                if (profile) setUserProfile(profile);
+            });
+        });
+    }, [user.id, user.name]);
 
     React.useEffect(() => {
         if (isSearching) {
@@ -269,6 +278,13 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
             <div className="text-center mb-12">
                 <p className="text-cyan-500 mb-2">Welcome, Agent {user.name} [{user.id}]</p>
+                {userProfile && (
+                    <div className="flex justify-center gap-4 text-xs font-mono text-cyan-400/80 mb-4 bg-cyan-950/30 py-2 px-4 rounded border border-cyan-900/50 inline-flex">
+                        <span>10s: {Math.floor(userProfile.rating_10s)}</span>
+                        <span>3m: {Math.floor(userProfile.rating_3m)}</span>
+                        <span>10m: {Math.floor(userProfile.rating_10m)}</span>
+                    </div>
+                )}
                 <h2 className="text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
                     {t.selectMode}
                 </h2>
