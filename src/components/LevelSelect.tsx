@@ -155,9 +155,12 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const startRandomMatch = React.useCallback((mode: 'random' | 'ranked', tc: TimeControl) => {
         setIsSearching(true);
         
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+        // Defer notification request to avoid blocking the UI paint (fixes INP issue)
+        setTimeout(() => {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }, 100);
         
         const triggerMatchNotification = () => {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
