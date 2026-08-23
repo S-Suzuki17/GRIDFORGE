@@ -6,16 +6,16 @@ import AdBanner from '../components/AdBanner';
 import { TitleScreen } from '../components/TitleScreen';
 import { LevelSelect } from '../components/LevelSelect';
 import ReplayBoard from '../components/ReplayBoard';
-import { Language } from '../locales/dict';
+import { Language, LANGUAGES, dict } from '../locales/dict';
 import { User, GameState, TimeControl } from '../types/game';
 import { GameRecord } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
 
 export default function Home() {
-    const [lang, setLang] = useState<Language>('ja');
+    const [lang, setLang] = useState<Language>('en');
     const [gameState, setGameState] = useState<GameState>('title');
     const [user, setUser] = useState<User | null>(null);
-    const [cpuLevel, setCpuLevel] = useState<number>(1);
+    const [cpuLevel, setCpuLevel] = useState<number>(5);
     const [timeControl, setTimeControl] = useState<TimeControl>('10m');
     const [onlineInfo, setOnlineInfo] = useState<{ roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked' } | null>(null);
     const [replayRecord, setReplayRecord] = useState<GameRecord | null>(null);
@@ -66,19 +66,29 @@ export default function Home() {
         <main className="flex min-h-screen flex-col items-center justify-between p-4 bg-[#050505] text-[#00ff41] font-mono relative overflow-hidden">
             <div className="z-10 w-full max-w-5xl flex items-center justify-between font-mono text-sm mb-4">
                 {/* 右上のコントロール群 */}
-                <div className="fixed right-4 top-4 z-50 flex gap-2">
+                <div className="fixed right-4 top-4 z-50 flex gap-2 items-center">
                     <button 
                         onClick={() => setShowSettings(true)}
-                        className="px-4 py-2 bg-[#111] border border-cyan-500 text-cyan-400 rounded hover:bg-cyan-900/30 transition-colors font-bold tracking-widest shadow-[0_0_10px_rgba(34,211,238,0.3)] flex items-center justify-center"
+                        className="px-3 py-2 bg-[#111] border border-cyan-500 text-cyan-400 rounded hover:bg-cyan-900/30 transition-colors font-bold tracking-widest shadow-[0_0_10px_rgba(34,211,238,0.3)] flex items-center justify-center text-xs"
                     >
-                        ⚙️ {lang === 'ja' ? '設定' : 'SETTINGS'}
+                        ⚙️ {dict[lang]?.settings || 'SETTINGS'}
                     </button>
-                    <button 
-                        onClick={() => setLang(lang === 'en' ? 'ja' : 'en')}
-                        className="px-4 py-2 bg-[#111] border border-[#00ff41] text-[#00ff41] rounded hover:bg-[#00ff41]/20 transition-colors font-bold tracking-widest shadow-[0_0_10px_rgba(0,255,65,0.3)]"
-                    >
-                        {lang === 'en' ? '🌐 EN / JA' : '🌐 JA / EN'}
-                    </button>
+                    <div className="relative">
+                        <select 
+                            value={lang}
+                            onChange={(e) => setLang(e.target.value as Language)}
+                            className="px-3 py-2 bg-[#111] border border-[#00ff41] text-[#00ff41] rounded hover:bg-[#00ff41]/20 transition-colors font-bold tracking-wider shadow-[0_0_10px_rgba(0,255,65,0.3)] cursor-pointer text-xs focus:outline-none appearance-none pr-7 pl-2"
+                        >
+                            {LANGUAGES.map(l => (
+                                <option key={l.code} value={l.code} className="bg-black text-[#00ff41]">
+                                    {l.flag} {l.label}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#00ff41] text-xs">
+                            ▼
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -86,7 +96,7 @@ export default function Home() {
                 <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-[#111] border border-cyan-500 rounded-xl p-8 w-full max-w-md shadow-[0_0_30px_rgba(34,211,238,0.2)]">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-cyan-400">⚙️ {lang === 'ja' ? 'サウンド設定' : 'SOUND SETTINGS'}</h2>
+                            <h2 className="text-2xl font-bold text-cyan-400">⚙️ {dict[lang]?.settings || 'SETTINGS'}</h2>
                             <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
                         </div>
                         

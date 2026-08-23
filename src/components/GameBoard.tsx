@@ -488,8 +488,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    const playerName = user?.name || (lang === 'en' ? 'Guest' : 'ゲスト');
-    const opponentName = roomId ? (lang === 'en' ? 'Opponent' : '対戦相手') : `CPU`;
+    const playerName = user?.name || 'Player';
+    const opponentName = roomId ? 'Opponent' : `CPU`;
     const myRole = onlineRole || 'white';
 
     return (
@@ -546,8 +546,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     </div>
                     <div className={`text-4xl font-bold mb-12 ${winner === 'white_wins' ? 'text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.8)]' : 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]'}`}>
                         {winner === 'white_wins' 
-                            ? `${playerName} ${lang === 'en' ? 'WIN!' : '勝利!'}` 
-                            : `${opponentName} ${lang === 'en' ? 'WIN...' : '勝利...'}`}
+                            ? `${playerName} (${t.whiteWon})` 
+                            : `${opponentName} (${t.blackWon})`}
                     </div>
                     <div className="flex gap-4 mt-8">
                         <button 
