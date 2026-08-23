@@ -35,8 +35,8 @@ function getExpectedValue(token: Token, pool: IdentityPool): number {
 
 export function calculateDeepMove(level: number, tokens: Token[], pool: IdentityPool, cpuPlayer: 'white' | 'black' = 'black'): AIMove | null {
     // Level 4: 1000ms search time
-    // Level 5: 2500ms search time
-    const timeoutMs = level === 5 ? 2500 : 1000;
+    // Level 5: 8000ms search time (for Vercel 10s limit)
+    const timeoutMs = level === 5 ? 8000 : 1000;
     
     // First, fallback to old logic if ISMCTS fails to find a move 
     // (though ISMCTS should almost always find one if it exists).

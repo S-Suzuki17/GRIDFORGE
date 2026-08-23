@@ -116,43 +116,44 @@ export class ISMCTS {
         }
 
         // 4. Simulation
-        let simPlayer = currentPlayer;
-        let depth = 0;
+        // 4. Simulation (Heuristic Evaluation instead of random rollouts for better/faster AI)
         let result = 0; 
-
-        while (depth < 30) {
-            const opponent = simPlayer === 'white' ? 'black' : 'white';
-            const myKings = currentTokens.filter(t => t.player === simPlayer && !t.isCaptured && assignment[t.id] === 'King');
-            const oppKings = currentTokens.filter(t => t.player === opponent && !t.isCaptured && assignment[t.id] === 'King');
+        let myScore = 0;
+        let oppScore = 0;
+        let myKingAlive = false;
+        let oppKingAlive = false;
+        
+        for(const t of currentTokens) {
+            if (t.isCaptured) continue;
+            const type = assignment[t.id];
             
-            if (myKings.length === 0) { result = simPlayer === this.rootPlayer ? -1 : 1; break; }
-            if (oppKings.length === 0) { result = simPlayer === this.rootPlayer ? 1 : -1; break; }
-
-            const moves = this.getValidMovesForDeterminization(currentTokens, simPlayer, assignment);
-            if (moves.length === 0) {
-                result = simPlayer === this.rootPlayer ? -1 : 1;
-                break;
+            if (type === 'King') {
+                if (t.player === this.rootPlayer) myKingAlive = true;
+                else oppKingAlive = true;
             }
-
-            const captures = moves.filter(m => currentTokens.some(t => t.row === m.targetRow && t.col === m.targetCol && !t.isCaptured));
-            const move = captures.length > 0 ? captures[Math.floor(Math.random() * captures.length)] : moves[Math.floor(Math.random() * moves.length)];
             
-            const { nextTokens } = this.applyMove(currentTokens, currentPool, move, assignment);
-            currentTokens = nextTokens;
-            simPlayer = opponent;
-            depth++;
+            const val = type === 'King' ? 100 : type === 'Queen' ? 9 : type === 'Rook' ? 5 : type === 'Bishop' ? 3 : type === 'Knight' ? 3 : 1;
+            
+            // Positional bonus: advance pawns, centralize pieces
+            let positional = 0;
+            if (type === 'Pawn') {
+                positional = t.player === 'white' ? t.row * 0.1 : (7 - t.row) * 0.1;
+            } else if (type === 'Knight') {
+                positional = (3.5 - Math.abs(t.row - 3.5)) * 0.05 + (3.5 - Math.abs(t.col - 3.5)) * 0.05;
+            }
+            
+            if (t.player === this.rootPlayer) myScore += val + positional;
+            else oppScore += val + positional;
         }
 
-        if (result === 0) {
-            let myScore = 0;
-            let oppScore = 0;
-            for(const t of currentTokens) {
-                if (t.isCaptured) continue;
-                const val = assignment[t.id] === 'King' ? 100 : assignment[t.id] === 'Queen' ? 9 : assignment[t.id] === 'Rook' ? 5 : assignment[t.id] === 'Bishop' ? 3 : assignment[t.id] === 'Knight' ? 3 : 1;
-                if (t.player === this.rootPlayer) myScore += val;
-                else oppScore += val;
-            }
-            result = myScore > oppScore ? 0.5 : myScore < oppScore ? -0.5 : 0;
+        if (!myKingAlive) {
+            result = -1;
+        } else if (!oppKingAlive) {
+            result = 1;
+        } else {
+            const scoreDiff = myScore - oppScore;
+            // Squash material advantage to [-0.99, 0.99]
+            result = 2 / (1 + Math.exp(-scoreDiff / 4)) - 1; 
         }
 
         // 5. Backpropagation
