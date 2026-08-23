@@ -566,6 +566,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         )}
                     </div>
                 )}
+            </div>
         </div>
     );
 }
