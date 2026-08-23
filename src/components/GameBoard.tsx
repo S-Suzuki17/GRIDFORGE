@@ -44,17 +44,29 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [fetchedOpponentName, setFetchedOpponentName] = useState<string | null>(null);
+    const [myRating, setMyRating] = useState<number | null>(null);
+    const [opponentRating, setOpponentRating] = useState<number | null>(null);
 
-    // Fetch opponent name
+    // Fetch profiles
     useEffect(() => {
-        if (opponentId && !opponentId.startsWith('GUEST-')) {
-            import('../lib/supabaseClient').then(({ supabase }) => {
-                supabase.from('profiles').select('name').eq('id', opponentId).single().then(({ data }) => {
-                    if (data?.name) setFetchedOpponentName(data.name);
+        const ratingCol = timeControl === '10s' ? 'rating_10s' : timeControl === '3m' ? 'rating_3m' : 'rating_10m';
+        
+        import('../lib/supabaseClient').then(({ supabase }) => {
+            // Fetch my rating
+            if (user?.id && !user.id.startsWith('GUEST-') && matchMode === 'ranked') {
+                supabase.from('profiles').select(ratingCol).eq('id', user.id).single().then(({ data }) => {
+                    if (data && data[ratingCol]) setMyRating(data[ratingCol]);
                 });
-            });
-        }
-    }, [opponentId]);
+            }
+            // Fetch opponent name & rating
+            if (opponentId && !opponentId.startsWith('GUEST-')) {
+                supabase.from('profiles').select(`name, ${ratingCol}`).eq('id', opponentId).single().then(({ data }) => {
+                    if (data?.name) setFetchedOpponentName(data.name);
+                    if (data && data[ratingCol] && matchMode === 'ranked') setOpponentRating(data[ratingCol]);
+                });
+            }
+        });
+    }, [opponentId, user?.id, timeControl, matchMode]);
     const [isCheck, setIsCheck] = useState<boolean>(false);
     const [showCheckWarning, setShowCheckWarning] = useState<boolean>(false);
     const [winner, setWinner] = useState<'white_wins' | 'black_wins' | null>(null);
@@ -592,6 +604,9 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const myRole = onlineRole === 'spectator' ? 'white' : (onlineRole || 'white');
     const whiteName = onlineRole === 'spectator' ? 'White Player' : (myRole === 'white' ? playerName : opponentName);
     const blackName = onlineRole === 'spectator' ? 'Black Player' : (myRole === 'black' ? playerName : opponentName);
+    
+    const whiteRatingToDisplay = onlineRole === 'spectator' ? null : (myRole === 'white' ? myRating : opponentRating);
+    const blackRatingToDisplay = onlineRole === 'spectator' ? null : (myRole === 'black' ? myRating : opponentRating);
 
     return (
         <div className="flex flex-col items-center w-full max-w-[800px] relative">
@@ -618,7 +633,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 {/* White Player Info */}
                 <div className={`text-xl font-bold flex flex-col items-start gap-1 ${currentTurn === 'white' ? 'text-blue-400 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'} relative`}>
                     <div className="flex items-center gap-2">
-                        🟦 {whiteName}
+                        🟦 {whiteName} {whiteRatingToDisplay !== null && <span className="text-gray-400 text-sm">({whiteRatingToDisplay})</span>}
                         {isCheck && currentTurn === 'white' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
                     </div>
                     <span className="text-2xl font-mono">{formatTime(timeLeftWhite)}</span>
@@ -638,7 +653,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 <div className={`text-xl font-bold flex flex-col items-end gap-1 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'} relative`}>
                     <div className="flex items-center gap-2">
                         {isCheck && currentTurn === 'black' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
-                        {blackName} 🟥
+                        {blackRatingToDisplay !== null && <span className="text-gray-400 text-sm">({blackRatingToDisplay})</span>} {blackName} 🟥
                     </div>
                     <span className="text-2xl font-mono">{formatTime(timeLeftBlack)}</span>
                     {/* Black Emote */}
