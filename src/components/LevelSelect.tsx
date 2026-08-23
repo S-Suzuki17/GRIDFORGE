@@ -173,10 +173,28 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 if (matchedRef.current) return;
                 
                 const state = channel.presenceState();
-                const keys = Object.keys(state);
+                const rawKeys = Object.keys(state);
                 
-                if (keys.length >= 2) {
-                    const sorted = keys.sort((a, b) => {
+                // Deduplicate ghosts (same user.id) by keeping only the newest presence
+                const uniqueUsers = new Map<string, string>();
+                for (const key of rawKeys) {
+                    const userId = key.split('_')[0];
+                    const ts = parseInt(key.split('_')[1] || '0');
+                    if (!uniqueUsers.has(userId)) {
+                        uniqueUsers.set(userId, key);
+                    } else {
+                        const existingKey = uniqueUsers.get(userId)!;
+                        const existingTs = parseInt(existingKey.split('_')[1] || '0');
+                        if (ts > existingTs) {
+                            uniqueUsers.set(userId, key);
+                        }
+                    }
+                }
+                
+                const validKeys = Array.from(uniqueUsers.values());
+                
+                if (validKeys.length >= 2) {
+                    const sorted = validKeys.sort((a, b) => {
                         const tsA = parseInt(a.split('_')[1] || '0');
                         const tsB = parseInt(b.split('_')[1] || '0');
                         return tsB - tsA; // Newest first to push ghosts to the end
