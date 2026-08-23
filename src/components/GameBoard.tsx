@@ -123,11 +123,18 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                                 data.move.targetRow,
                                 data.move.targetCol,
                                 data.move.possibleTypes,
-                                tokens.find(t => t.row === data.move.targetRow && t.col === data.move.targetCol)
+                                tokens.find(t => t.row === data.move.targetRow && t.col === data.move.targetCol),
+                                true,
+                                data.move.promotedTo
                             );
+                        } else {
+                            // If CPU has no valid moves, it passes (e.g. stalemate)
+                            setCurrentTurn('white');
                         }
                     } catch (err) {
                         console.error("AI fetch failed:", err);
+                        // Fallback to human turn if AI crashes
+                        setCurrentTurn('white');
                     }
                 } else {
                     // Level 1~3: ブラウザローカルAI
@@ -135,7 +142,9 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     const move = calculateCPUMove(cpuLevel || 1, tokens, pool, 'black');
                     if (move) {
                         const targetToken = tokens.find(t => t.row === move.targetRow && t.col === move.targetCol);
-                        executeMove(tokens.find(t => t.id === move.tokenId)!, move.targetRow, move.targetCol, move.possibleTypes, targetToken);
+                        executeMove(tokens.find(t => t.id === move.tokenId)!, move.targetRow, move.targetCol, move.possibleTypes, targetToken, true, move.promotedTo);
+                    } else {
+                        setCurrentTurn('white');
                     }
                 }
             }, 500); // サーバーレス呼び出しの場合はレスポンス時間が追加されるので少し短めに
@@ -368,6 +377,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
 
     const handleSquareClick = (targetRow: number, targetCol: number) => {
         if (winner) return;
+        
+        // Prevent human player from interacting during CPU's turn
+        if (!roomId && currentTurn === 'black') return;
+
         setErrorMsg(null);
         
         if (selectedTokenId) {
@@ -405,7 +418,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 return;
             }
 
-            if ((targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
+            if (!promotedTo && (targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
                 setPromotionPending({
                     token,
                     targetRow,
