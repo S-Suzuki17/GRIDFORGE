@@ -28,11 +28,12 @@ interface GameBoardProps {
     roomId?: string;
     onlineRole?: 'white' | 'black' | 'spectator';
     matchMode?: 'random' | 'private' | 'ranked';
+    opponentId?: string;
     timeControl?: TimeControl;
     onHome?: () => void;
 }
 
-export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, matchMode, timeControl = '10m', onHome }: GameBoardProps) {
+export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, matchMode, opponentId, timeControl = '10m', onHome }: GameBoardProps) {
     const t = dict[lang];
     const [pool] = useState(() => new IdentityPool());
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -318,8 +319,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 // Since this is getting complex, I will just put placeholders and fix it in GameBoard.
                 
                 // Let's pass `opponentId` as a prop later. For now, fallback to "unknown".
-                const whiteId = onlineRole === 'white' ? user?.id : undefined;
-                const blackId = onlineRole === 'black' ? user?.id : undefined;
+                const whiteId = onlineRole === 'white' ? user?.id : (roomId ? opponentId : undefined);
+                const blackId = onlineRole === 'black' ? user?.id : (roomId ? opponentId : undefined);
 
                 const record: GameRecord = {
                     white_player: onlineRole === 'black' ? 'Opponent' : (user?.name || 'Guest'),
@@ -338,7 +339,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             };
             saveRecord();
         }
-    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole, timeControl]);
+    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole, timeControl, opponentId]);
 
     // 選択中のトークンが移動可能なマス（候補）を算出
     const validMoves = useMemo(() => {

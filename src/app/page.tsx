@@ -17,7 +17,7 @@ export default function Home() {
     const [user, setUser] = useState<User | null>(null);
     const [cpuLevel, setCpuLevel] = useState<number>(5);
     const [timeControl, setTimeControl] = useState<TimeControl>('10m');
-    const [onlineInfo, setOnlineInfo] = useState<{ roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked' } | null>(null);
+    const [onlineInfo, setOnlineInfo] = useState<{ roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', opponentId?: string } | null>(null);
     const [replayRecord, setReplayRecord] = useState<GameRecord | null>(null);
     const [soundConfig, setSoundConfig] = useState(() => soundManager.getConfig());
     const [showSettings, setShowSettings] = useState(false);
@@ -67,8 +67,8 @@ export default function Home() {
         setGameState('playing');
     };
 
-    const handleOnlineMatch = (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => {
-        setOnlineInfo({ roomId, role, matchMode });
+    const handleOnlineMatch = (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl, opponentId?: string) => {
+        setOnlineInfo({ roomId, role, matchMode, opponentId });
         setTimeControl(tc);
         setGameState('playing');
     };
@@ -195,6 +195,7 @@ export default function Home() {
                         roomId={onlineInfo?.roomId}
                         onlineRole={onlineInfo?.role}
                         matchMode={onlineInfo?.matchMode}
+                        opponentId={onlineInfo?.opponentId}
                         timeControl={timeControl}
                         onHome={() => setGameState('level_select')}
                     />

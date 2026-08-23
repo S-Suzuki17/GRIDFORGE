@@ -14,7 +14,7 @@ interface LevelSelectProps {
     lang: Language;
     user: User;
     onSelect: (level: number, tc: TimeControl) => void;
-    onOnlineMatch?: (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => void;
+    onOnlineMatch?: (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl, opponentId?: string) => void;
     onReplay?: (record: GameRecord) => void;
     onBack: () => void;
 }
@@ -192,7 +192,8 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             });
                             setTimeout(() => {
                                 cancelSearch();
-                                onOnlineMatch?.(roomId, 'white', mode, tc);
+                                const opponentId = joinerKey.split('_')[0];
+                                onOnlineMatch?.(roomId, 'white', mode, tc, opponentId);
                             }, 300);
                             return;
                         }
@@ -206,7 +207,8 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     matchedRef.current = true;
                     triggerMatchNotification();
                     cancelSearch();
-                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, tc);
+                    const opponentId = payload.hostKey.split('_')[0];
+                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, tc, opponentId);
                 }
             })
             .subscribe(async (status) => {
