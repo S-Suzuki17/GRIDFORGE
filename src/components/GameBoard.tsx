@@ -74,6 +74,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [winner, setWinner] = useState<'white_wins' | 'black_wins' | 'draw' | null>(null);
     const [disconnectTimeLeft, setDisconnectTimeLeft] = useState<number | null>(null);
     const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const hasOpponentJoinedRef = useRef<boolean>(false);
 
     const initialTime = timeControl === '10s' ? 10 : timeControl === '3m' ? 180 : 600;
     const [timeLeftWhite, setTimeLeftWhite] = useState<number>(initialTime);
@@ -96,6 +97,29 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         }, 1000);
         return () => clearInterval(timer);
     }, [currentTurn, winner, tokens.length]);
+
+    // Initial timeout if opponent never connects from the start
+    useEffect(() => {
+        if (!roomId || !opponentId || onlineRole === 'spectator') return;
+        const initialWait = setTimeout(() => {
+            if (!hasOpponentJoinedRef.current && !winner) {
+                if (!disconnectTimerRef.current) {
+                    let timeLeft = 60;
+                    setDisconnectTimeLeft(timeLeft);
+                    disconnectTimerRef.current = setInterval(() => {
+                        timeLeft--;
+                        setDisconnectTimeLeft(timeLeft);
+                        if (timeLeft <= 0) {
+                            if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
+                            disconnectTimerRef.current = null;
+                            setWinner(onlineRole === 'white' ? 'white_wins' : 'black_wins');
+                        }
+                    }, 1000);
+                }
+            }
+        }, 15000);
+        return () => clearTimeout(initialWait);
+    }, [roomId, opponentId, onlineRole, winner]);
 
     const [promotionPending, setPromotionPending] = useState<{
         token: Token;
@@ -175,7 +199,15 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 
                 // Disconnect check (if opponentId is set and we're not a spectator)
                 if (opponentId && onlineRole !== 'spectator') {
-                    if (!keys.includes(opponentId)) {
+                    if (keys.includes(opponentId)) {
+                        hasOpponentJoinedRef.current = true;
+                        if (disconnectTimerRef.current) {
+                            clearInterval(disconnectTimerRef.current);
+                            disconnectTimerRef.current = null;
+                            setDisconnectTimeLeft(null);
+                        }
+                    } else if (hasOpponentJoinedRef.current) {
+                        // Opponent was here and disconnected
                         if (!disconnectTimerRef.current) {
                             let timeLeft = 120;
                             setDisconnectTimeLeft(timeLeft);
@@ -188,12 +220,6 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                                     setWinner(onlineRole === 'white' ? 'white_wins' : 'black_wins');
                                 }
                             }, 1000);
-                        }
-                    } else {
-                        if (disconnectTimerRef.current) {
-                            clearInterval(disconnectTimerRef.current);
-                            disconnectTimerRef.current = null;
-                            setDisconnectTimeLeft(null);
                         }
                     }
                 }

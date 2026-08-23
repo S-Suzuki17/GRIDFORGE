@@ -175,28 +175,33 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         const matchedRef = { current: false };
         const channelName = mode === 'ranked' ? `matchmaking_ranked_${tc}` : `matchmaking_lobby_${tc}`;
         const channel = supabase.channel(channelName, {
-            config: { presence: { key: myId } }
+            config: { 
+                presence: { key: myId },
+                broadcast: { self: true }
+            }
         });
         channelRef.current = channel;
 
+        const handleMatchStart = (hostKey: string, joinerKey: string, roomId: string) => {
+            if (matchedRef.current) return;
+            matchedRef.current = true;
+            triggerMatchNotification();
+            
+            const role = hostKey === myId ? 'white' : 'black';
+            const opponentId = (role === 'white' ? joinerKey : hostKey).split('_')[0];
+            
+            setMatchFound(true);
+            setTimeout(() => {
+                cancelSearch();
+                onOnlineMatch?.(roomId, role, mode, tc, opponentId);
+                setMatchFound(false);
+            }, 1500);
+        };
+
         channel
             .on('broadcast', { event: 'match_found' }, ({ payload }) => {
-                if (matchedRef.current) return;
-                
                 if (payload.hostKey === myId || payload.joinerKey === myId) {
-                    matchedRef.current = true;
-                    triggerMatchNotification();
-                    
-                    const role = payload.hostKey === myId ? 'white' : 'black';
-                    const opponentId = (role === 'white' ? payload.joinerKey : payload.hostKey).split('_')[0];
-                    
-                    setMatchFound(true);
-                    channel.untrack();
-                    setTimeout(() => {
-                        cancelSearch();
-                        onOnlineMatch?.(payload.roomId, role, mode, tc, opponentId);
-                        setMatchFound(false);
-                    }, 2000);
+                    handleMatchStart(payload.hostKey, payload.joinerKey, payload.roomId);
                 }
             })
             .on('presence', { event: 'sync' }, () => {
@@ -226,30 +231,39 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     const sorted = validKeys.sort((a, b) => {
                         const tsA = parseInt(a.split('_')[1] || '0');
                         const tsB = parseInt(b.split('_')[1] || '0');
-                        return tsA - tsB; // Oldest first
+                        if (tsA !== tsB) return tsA - tsB; // Oldest first
+                        return a.localeCompare(b);
                     });
                     
                     for (let i = 0; i < sorted.length - 1; i += 2) {
                         const hostKey = sorted[i];
                         const joinerKey = sorted[i + 1];
                         
-                        // ONLY the host initiates the broadcast to avoid duplicate events and race conditions
+                        // Deterministic Room ID computation for both players
+                        const combined = hostKey > joinerKey ? hostKey + joinerKey : joinerKey + hostKey;
+                        let hash = 5381;
+                        for (let j = 0; j < combined.length; j++) {
+                            hash = ((hash << 5) + hash + combined.charCodeAt(j)) & 0xFFFFFFFF;
+                        }
+                        const roomId = Math.abs(hash).toString(36).toUpperCase();
+
                         if (hostKey === myId) {
-                            const combined = hostKey > joinerKey ? hostKey + joinerKey : joinerKey + hostKey;
-                            let hash = 5381;
-                            for (let i = 0; i < combined.length; i++) {
-                                hash = ((hash << 5) + hash + combined.charCodeAt(i)) & 0xFFFFFFFF;
-                            }
-                            const roomId = Math.abs(hash).toString(36).toUpperCase();
-                            
+                            // Host broadcasts match signal to joiner
                             channel.send({
                                 type: 'broadcast',
                                 event: 'match_found',
                                 payload: { hostKey, joinerKey, roomId }
                             });
+                            // Host immediately starts match flow locally
+                            handleMatchStart(hostKey, joinerKey, roomId);
                             return;
                         } else if (joinerKey === myId) {
-                            // Joiner just waits for the broadcast from the host
+                            // Joiner starts match via broadcast, or fallback after short delay
+                            setTimeout(() => {
+                                if (!matchedRef.current) {
+                                    handleMatchStart(hostKey, joinerKey, roomId);
+                                }
+                            }, 1000);
                             return;
                         }
                     }
