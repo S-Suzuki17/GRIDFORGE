@@ -29,7 +29,8 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [showLeaderboard, setShowLeaderboard] = React.useState(false);
     const [leaderboard, setLeaderboard] = React.useState<Profile[]>([]);
     const [loadingLeaderboard, setLoadingLeaderboard] = React.useState(false);
-    const [timeControl, setTimeControl] = React.useState<TimeControl>('10m');
+    const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl | 'all'>('all');
+    const [pendingAction, setPendingAction] = React.useState<{ type: 'cpu' | 'ranked' | 'random' | 'host' | 'join'; level?: number; roomId?: string } | null>(null);
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     React.useEffect(() => {
@@ -40,11 +41,16 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         }
     }, [isSearching]);
 
-    const loadLeaderboard = async () => {
+    const loadLeaderboard = async (category: TimeControl | 'all' = leaderboardCategory) => {
         setLoadingLeaderboard(true);
-        const data = await getTopProfiles();
+        const data = await getTopProfiles(category === 'all' ? undefined : category);
         setLeaderboard(data);
         setLoadingLeaderboard(false);
+    };
+
+    const handleCategoryChange = (category: TimeControl | 'all') => {
+        setLeaderboardCategory(category);
+        loadLeaderboard(category);
     };
 
     const loadReplays = async () => {
@@ -69,13 +75,13 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 });
             }, 50);
         } else {
-            onSelect(level, timeControl);
+            setPendingAction({ type: 'cpu', level });
         }
     };
 
     const handleAdFinish = () => {
         if (adLevel) {
-            onSelect(adLevel, timeControl);
+            setPendingAction({ type: 'cpu', level: adLevel });
             setAdLevel(null);
         }
     };
@@ -88,12 +94,12 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         setIsSearching(false);
     }, []);
 
-    const startRandomMatch = React.useCallback((mode: 'random' | 'ranked') => {
+    const startRandomMatch = React.useCallback((mode: 'random' | 'ranked', tc: TimeControl) => {
         setIsSearching(true);
         
         const myId = user.id + '_' + Date.now();
         const matchedRef = { current: false };
-        const channelName = mode === 'ranked' ? `matchmaking_ranked_${timeControl}` : `matchmaking_lobby_${timeControl}`;
+        const channelName = mode === 'ranked' ? `matchmaking_ranked_${tc}` : `matchmaking_lobby_${tc}`;
         const channel = supabase.channel(channelName, {
             config: { presence: { key: myId } }
         });
@@ -126,7 +132,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             });
                             setTimeout(() => {
                                 cancelSearch();
-                                onOnlineMatch?.(roomId, 'white', mode, timeControl);
+                                onOnlineMatch?.(roomId, 'white', mode, tc);
                             }, 300);
                             return;
                         }
@@ -140,7 +146,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 if (payload.joinerKey === myId) {
                     matchedRef.current = true;
                     cancelSearch();
-                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, timeControl);
+                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, tc);
                 }
             })
             .subscribe(async (status) => {
@@ -149,6 +155,24 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 }
             });
     }, [user, onOnlineMatch, cancelSearch]);
+
+    const handleTimeControlConfirm = (tc: TimeControl) => {
+        if (!pendingAction) return;
+        const action = pendingAction;
+        setPendingAction(null);
+
+        if (action.type === 'cpu') {
+            onSelect(action.level || 5, tc);
+        } else if (action.type === 'ranked') {
+            startRandomMatch('ranked', tc);
+        } else if (action.type === 'random') {
+            startRandomMatch('random', tc);
+        } else if (action.type === 'host' && action.roomId) {
+            onOnlineMatch?.(action.roomId, 'white', 'private', tc);
+        } else if (action.type === 'join' && action.roomId) {
+            onOnlineMatch?.(action.roomId, 'black', 'private', tc);
+        }
+    };
 
     // Cleanup on unmount
     React.useEffect(() => {
@@ -161,16 +185,43 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] w-full text-cyan-400">
+            {/* Time Control selection modal */}
+            {pendingAction && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-md w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                        <h3 className="text-2xl font-bold text-cyan-300 mb-2">⏱ {t.selectTimeLimit}</h3>
+                        <p className="text-gray-400 text-sm mb-6">{t.timeLimit}</p>
+                        <div className="flex flex-col gap-3">
+                            {(['10s', '3m', '10m'] as TimeControl[]).map(tc => (
+                                <button
+                                    key={tc}
+                                    onClick={() => handleTimeControlConfirm(tc)}
+                                    className="w-full py-4 bg-cyan-950/50 border border-cyan-500 hover:bg-cyan-900 transition-all text-cyan-300 font-bold tracking-widest text-lg hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] rounded flex justify-between px-6 items-center"
+                                >
+                                    <span>{tc === '10s' ? t.tc10s : tc === '3m' ? t.tc3m : t.tc10m}</span>
+                                    <span className="text-sm font-mono text-cyan-500">▶</span>
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setPendingAction(null)}
+                            className="mt-6 text-gray-500 hover:text-gray-300 text-sm"
+                        >
+                            {t.cancel}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Ad overlay */}
             {adLevel && (
                 <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
                     <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-md w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
                         <h3 className="text-xl font-bold text-cyan-300 mb-4 flex items-center justify-center gap-2">
-                            <span className="text-yellow-400">⚡</span> Cloud Compute Required
+                            <span className="text-yellow-400">⚡</span> {t.adCloudTitle}
                         </h3>
                         <p className="text-gray-400 text-sm mb-6">
-                            Levels 4 & 5 use Serverless AI (AWS Lambda) for massive calculation power. 
-                            Watch a short ad to unlock server time for this match!
+                            {t.adCloudDesc}
                         </p>
                         
                         <div className="w-full h-4 bg-gray-800 rounded-full overflow-hidden mb-6 border border-gray-700">
@@ -187,7 +238,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                                 onClick={handleAdFinish}
                                 className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-colors"
                             >
-                                Play Level {adLevel}
+                                {t.adPlayButton}
                             </button>
                         )}
                     </div>
@@ -200,7 +251,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-md w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
                         <div className="text-4xl mb-6 animate-spin inline-block">🔍</div>
                         <h3 className="text-2xl font-bold text-cyan-300 mb-4">
-                            Searching for Opponent...
+                            {t.searchingOpponent}
                         </h3>
                         <p className="text-gray-400 text-sm mb-6">
                             Waiting for another player to join the queue.
@@ -216,7 +267,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             onClick={cancelSearch}
                             className="px-6 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-500 rounded text-red-300 font-bold transition-colors"
                         >
-                            Cancel
+                            {t.cancel}
                         </button>
                     </div>
                 </div>
@@ -230,17 +281,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             </div>
 
             <div className="w-full max-w-md flex flex-col gap-4 mt-8">
-                
-                {/* 持ち時間設定 */}
-                <div className="flex flex-col gap-2 mb-2 p-4 bg-cyan-950/20 border border-cyan-900 rounded">
-                    <span className="text-cyan-400 font-bold text-sm tracking-widest">{t.timeLimit}</span>
-                    <div className="flex gap-2">
-                        <button onClick={() => setTimeControl('10s')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '10s' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc10s}</button>
-                        <button onClick={() => setTimeControl('3m')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '3m' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc3m}</button>
-                        <button onClick={() => setTimeControl('10m')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '10m' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc10m}</button>
-                    </div>
-                </div>
-
+                {/* VS CPU */}
                 <button 
                     onClick={() => handleLevelClick(5)}
                     className="group relative w-full p-4 bg-black/40 border border-red-500/50 hover:bg-red-950/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
@@ -262,7 +303,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
                 {/* Ranked Match */}
                 <button 
-                    onClick={() => startRandomMatch('ranked')}
+                    onClick={() => setPendingAction({ type: 'ranked' })}
                     className="group relative w-full p-4 bg-fuchsia-950/40 border border-fuchsia-500/50 hover:bg-fuchsia-900/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(217,70,239,0.3)]">
                     <div className="absolute inset-0 w-1 bg-fuchsia-500 group-hover:w-full transition-all duration-300 opacity-10" />
                     <div className="relative z-10 flex justify-between items-center">
@@ -273,7 +314,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
                 {/* Random Match */}
                 <button 
-                    onClick={() => startRandomMatch('random')}
+                    onClick={() => setPendingAction({ type: 'random' })}
                     className="group relative w-full p-4 bg-emerald-950/40 border border-emerald-500/50 hover:bg-emerald-900/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                     <div className="absolute inset-0 w-1 bg-emerald-500 group-hover:w-full transition-all duration-300 opacity-10" />
                     <div className="relative z-10 flex justify-between items-center">
@@ -299,7 +340,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         <button 
                             onClick={() => {
                                 const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                onOnlineMatch?.(newRoomId, 'white', 'private', timeControl);
+                                setPendingAction({ type: 'host', roomId: newRoomId });
                             }}
                             className="w-full p-3 bg-blue-900/50 hover:bg-blue-800/50 border border-blue-400 rounded text-blue-300 font-bold transition-colors"
                         >
@@ -316,7 +357,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             />
                             <button 
                                 onClick={() => {
-                                    if(joinRoomId) onOnlineMatch?.(joinRoomId, 'black', 'private', timeControl);
+                                    if(joinRoomId.trim()) setPendingAction({ type: 'join', roomId: joinRoomId.trim() });
                                 }}
                                 className="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-400 rounded text-red-300 font-bold transition-colors"
                             >
@@ -369,7 +410,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                                                 {r.white_player} <span className="text-gray-600">{t.vs}</span> {r.black_player}
                                             </span>
                                             <span className="text-xs text-gray-500">
-                                                {new Date(r.created_at!).toLocaleDateString()} • {r.mode.toUpperCase()}
+                                                {new Date(r.created_at!).toLocaleDateString()} • {r.mode.toUpperCase()} {r.time_control ? `• ${r.time_control}` : ''}
                                             </span>
                                         </div>
                                         <div className="flex flex-col items-end">
@@ -405,9 +446,31 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     </button>
                 ) : (
                     <div className="p-4 bg-black/60 border border-fuchsia-500/50 rounded flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
+                        <div className="flex justify-between items-center mb-1">
                             <span className="text-fuchsia-400 font-bold text-sm">🏆 {t.top10Players}</span>
                             <button onClick={() => setShowLeaderboard(false)} className="text-gray-500 hover:text-white">✕</button>
+                        </div>
+
+                        {/* Category Tabs */}
+                        <div className="flex gap-1 p-1 bg-black/40 border border-fuchsia-900/50 rounded">
+                            {[
+                                { id: 'all', label: t.lbOverall },
+                                { id: '10s', label: t.lb10s },
+                                { id: '3m', label: t.lb3m },
+                                { id: '10m', label: t.lb10m },
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => handleCategoryChange(tab.id as any)}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
+                                        leaderboardCategory === tab.id
+                                            ? 'bg-fuchsia-600 text-white shadow-[0_0_10px_rgba(217,70,239,0.5)]'
+                                            : 'text-fuchsia-400/70 hover:text-fuchsia-200'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
                         
                         {loadingLeaderboard ? (
@@ -416,22 +479,28 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             <div className="text-center text-gray-500 py-4">{t.noRankedPlayers}</div>
                         ) : (
                             <div className="flex flex-col gap-2">
-                                {leaderboard.map((p, index) => (
-                                    <div 
-                                        key={p.id}
-                                        className="w-full flex justify-between items-center p-3 bg-fuchsia-950/30 border border-fuchsia-900/50 rounded"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <span className={`text-lg font-black ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
-                                                #{index + 1}
-                                            </span>
-                                            <span className="font-bold text-gray-200">{p.name}</span>
+                                {leaderboard.map((p, index) => {
+                                    const ratingVal = leaderboardCategory === '10s' ? (p.rating_10s ?? p.rating ?? 2000)
+                                                    : leaderboardCategory === '3m' ? (p.rating_3m ?? p.rating ?? 2000)
+                                                    : leaderboardCategory === '10m' ? (p.rating_10m ?? p.rating ?? 2000)
+                                                    : (p.rating ?? 2000);
+                                    return (
+                                        <div 
+                                            key={p.id}
+                                            className="w-full flex justify-between items-center p-3 bg-fuchsia-950/30 border border-fuchsia-900/50 rounded"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <span className={`text-lg font-black ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
+                                                    #{index + 1}
+                                                </span>
+                                                <span className="font-bold text-gray-200">{p.name}</span>
+                                            </div>
+                                            <div className="text-fuchsia-400 font-mono font-bold tracking-widest">
+                                                {ratingVal}
+                                            </div>
                                         </div>
-                                        <div className="text-fuchsia-400 font-mono font-bold tracking-widest">
-                                            {p.rating}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

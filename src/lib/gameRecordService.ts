@@ -24,6 +24,7 @@ export interface GameRecord {
     winner: string | null;
     mode: 'cpu' | 'private' | 'random' | 'ranked';
     cpu_level?: number;
+    time_control?: string;
     moves: MoveRecord[];
     total_moves: number;
 }
@@ -32,6 +33,9 @@ export interface Profile {
     id: string;
     name: string;
     rating: number;
+    rating_10s: number;
+    rating_3m: number;
+    rating_10m: number;
 }
 
 export async function saveGameRecord(record: GameRecord): Promise<string | null> {
@@ -45,6 +49,7 @@ export async function saveGameRecord(record: GameRecord): Promise<string | null>
             winner: record.winner,
             mode: record.mode,
             cpu_level: record.cpu_level,
+            time_control: record.time_control,
             moves: record.moves,
             total_moves: record.total_moves,
         })
@@ -86,11 +91,15 @@ export async function getGameRecord(id: string): Promise<GameRecord | null> {
     return data;
 }
 
-export async function getTopProfiles(): Promise<Profile[]> {
+export async function getTopProfiles(timeControl?: string): Promise<Profile[]> {
+    const ratingColumn = timeControl === '10s' ? 'rating_10s' 
+                       : timeControl === '3m' ? 'rating_3m' 
+                       : timeControl === '10m' ? 'rating_10m'
+                       : 'rating';
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('rating', { ascending: false })
+        .order(ratingColumn, { ascending: false })
         .limit(10);
     
     if (error) {
@@ -101,7 +110,6 @@ export async function getTopProfiles(): Promise<Profile[]> {
 }
 
 export async function ensureProfile(id: string, name: string): Promise<Profile | null> {
-    // Upsert the profile (if exists, does nothing to rating because we don't specify it, wait, actually upsert might overwrite. Better to select first)
     const { data: existing, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -112,7 +120,7 @@ export async function ensureProfile(id: string, name: string): Promise<Profile |
     
     const { data, error } = await supabase
         .from('profiles')
-        .insert({ id, name, rating: 2000 })
+        .insert({ id, name, rating: 2000, rating_10s: 2000, rating_3m: 2000, rating_10m: 2000 })
         .select()
         .single();
         

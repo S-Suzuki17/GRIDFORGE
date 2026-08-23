@@ -243,6 +243,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     winner,
                     mode,
                     cpu_level: roomId ? undefined : cpuLevel,
+                    time_control: timeControl,
                     moves: moveHistory,
                     total_moves: turnCount
                 };
@@ -251,7 +252,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             };
             saveRecord();
         }
-    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole]);
+    }, [winner, moveHistory, turnCount, user, roomId, cpuLevel, savedRecordId, matchMode, onlineRole, timeControl]);
 
     // 選択中のトークンが移動可能なマス（候補）を算出
     const validMoves = useMemo(() => {
