@@ -192,6 +192,13 @@ export default function Home() {
                     adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT || "XXXXXXXXXX"} 
                 />
             </div>
+
+            {/* Footer */}
+            <footer className="w-full max-w-4xl mt-4 mb-4 text-center text-gray-600 text-xs">
+                <a href="/privacy" className="hover:text-cyan-500 transition-colors">Privacy Policy</a>
+                <span className="mx-2">|</span>
+                <span>&copy; 2026 Q-GAMBIT</span>
+            </footer>
         </main>
     );
 }
