@@ -137,6 +137,7 @@ export default function ReplayBoard({ lang, record, onHome }: ReplayBoardProps) 
                                                 probabilities={cellToken.probabilities} 
                                                 isSelected={false} 
                                                 onClick={() => {}}
+                                                promotedTo={cellToken.promotedTo}
                                             />
                                         </div>
                                     )}

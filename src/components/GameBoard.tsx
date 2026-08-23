@@ -643,6 +643,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                                     probabilities={token.probabilities}
                                     isSelected={token.id === selectedTokenId}
                                     onClick={() => {}} 
+                                    promotedTo={token.promotedTo}
                                 />
                             ))}
                         </div>
