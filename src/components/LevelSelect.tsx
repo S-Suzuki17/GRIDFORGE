@@ -7,12 +7,14 @@ import { supabase } from '../lib/supabaseClient';
 import { GameRecord, getGameRecords, Profile, getTopProfiles, UserStats } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
 import { getTitleFromRating } from '../lib/rankSystem';
+import { FriendsMenu } from './FriendsMenu';
+import { LiveMatchesMenu } from './LiveMatchesMenu';
 
 interface LevelSelectProps {
     lang: Language;
     user: User;
     onSelect: (level: number, tc: TimeControl) => void;
-    onOnlineMatch?: (roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => void;
+    onOnlineMatch?: (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => void;
     onReplay?: (record: GameRecord) => void;
     onBack: () => void;
 }
@@ -36,7 +38,10 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
     const [userStats, setUserStats] = React.useState<UserStats | null>(null);
     const [showAccount, setShowAccount] = React.useState(false);
+    const [showFriends, setShowFriends] = React.useState(false);
+    const [showLiveMatches, setShowLiveMatches] = React.useState(false);
     const [onlineCount, setOnlineCount] = React.useState(1);
+    const [onlineUsers, setOnlineUsers] = React.useState<Set<string>>(new Set());
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
     const globalChannelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -49,6 +54,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         channel.on('presence', { event: 'sync' }, () => {
             const state = channel.presenceState();
             setOnlineCount(Object.keys(state).length);
+            setOnlineUsers(new Set(Object.keys(state)));
         });
 
         channel.subscribe(async (status) => {
@@ -559,14 +565,14 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
 
                 <div className="flex gap-2">
                     <button 
-                        onClick={() => {}} // TODO: Show Friends
+                        onClick={() => setShowFriends(true)}
                         className="group relative w-1/2 p-3 bg-purple-900/40 border border-purple-500/50 hover:bg-purple-800/50 transition-all rounded text-center overflow-hidden hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
                         <div className="relative z-10 flex flex-col justify-center items-center gap-1">
                             <span className="text-lg font-bold text-purple-300 tracking-wider">👥 Friends</span>
                         </div>
                     </button>
                     <button 
-                        onClick={() => {}} // TODO: Show Live Matches
+                        onClick={() => setShowLiveMatches(true)}
                         className="group relative w-1/2 p-3 bg-red-900/40 border border-red-500/50 hover:bg-red-800/50 transition-all rounded text-center overflow-hidden hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
                         <div className="relative z-10 flex flex-col justify-center items-center gap-1">
                             <span className="text-lg font-bold text-red-300 tracking-wider">🔴 Live Matches</span>
@@ -746,6 +752,38 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     </div>
                 )}
             </div>
+
+            {showFriends && (
+                <FriendsMenu 
+                    user={user} 
+                    lang={lang} 
+                    onlineUsers={onlineUsers} 
+                    onClose={() => setShowFriends(false)} 
+                    onChallenge={(friendId) => {
+                        // Create a private room for challenge
+                        const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                        // You might want to send a real-time notification to the friend here via a separate channel or the global lobby.
+                        // For now, it just acts as a host and the friend has to manually join.
+                        setPendingAction({ type: 'host', roomId: newRoomId });
+                        setShowFriends(false);
+                    }}
+                />
+            )}
+
+            {showLiveMatches && (
+                <LiveMatchesMenu 
+                    lang={lang} 
+                    onClose={() => setShowLiveMatches(false)} 
+                    onSpectate={(roomId) => {
+                        // TODO: We need to tell the parent component to start a spectator match
+                        // Can we just use onOnlineMatch with a 'spectator' role? Yes, we can add 'spectator' to role type!
+                        // Actually, onOnlineMatch role is 'white' | 'black'. We will change it to 'white' | 'black' | 'spectator'.
+                        // For now let's just cast it, or I will update the type!
+                        onOnlineMatch?.(roomId, 'spectator', 'private', '10m');
+                        setShowLiveMatches(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

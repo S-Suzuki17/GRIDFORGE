@@ -26,7 +26,7 @@ interface GameBoardProps {
     user?: User;
     cpuLevel?: number;
     roomId?: string;
-    onlineRole?: 'white' | 'black';
+    onlineRole?: 'white' | 'black' | 'spectator';
     matchMode?: 'random' | 'private' | 'ranked';
     timeControl?: TimeControl;
     onHome?: () => void;
@@ -79,8 +79,13 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     } | null>(null);
 
     const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
+    const moveHistoryRef = useRef<MoveRecord[]>([]);
     const [turnCount, setTurnCount] = useState(0);
     const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+
+    useEffect(() => {
+        moveHistoryRef.current = moveHistory;
+    }, [moveHistory]);
 
     // Emote states
     const [showEmoteMenu, setShowEmoteMenu] = useState(false);
@@ -96,7 +101,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     }, []);
 
     const sendEmote = useCallback((emote: EmoteType) => {
-        if (!roomId || !onlineRole) return;
+        if (!roomId || !onlineRole || onlineRole === 'spectator') return;
         if (channelRef.current) {
             channelRef.current.send({
                 type: 'broadcast',
@@ -135,30 +140,55 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
 
         channel
             .on('broadcast', { event: 'move' }, ({ payload }) => {
-                if (payload.userId === user.id) return; // ignore own move (already applied locally)
+                if (user && payload.userId === user.id) return; // ignore own move (already applied locally)
                 
                 const sourceToken = tokens.find(t => t.id === payload.tokenId);
                 const targetToken = tokens.find(t => t.row === payload.targetRow && t.col === payload.targetCol);
                 
                 if (sourceToken) {
-                    executeMoveRef.current?.(sourceToken, payload.targetRow, payload.targetCol, payload.possibleTypes, targetToken, false);
+                    executeMoveRef.current?.(sourceToken, payload.targetRow, payload.targetCol, payload.possibleTypes, targetToken, false, payload.promotedTo);
                 }
             })
             .on('broadcast', { event: 'game_action' }, ({ payload }) => {
                 if (payload.type === 'emote') {
-                    // Using a small delay or directly triggering
                     triggerEmote(payload.player, payload.emote);
                     playMoveSound();
                 }
             })
+            .on('broadcast', { event: 'request_sync' }, () => {
+                if (onlineRole === 'white' || onlineRole === 'black') {
+                    // Host (White ideally) responds with current state
+                    if (onlineRole === 'white' || (onlineRole === 'black' && currentTurn === 'black')) {
+                        channel.send({
+                            type: 'broadcast',
+                            event: 'sync_state',
+                            payload: { 
+                                tokens: tokensRef.current, 
+                                moveHistory: moveHistoryRef.current,
+                                currentTurn
+                            }
+                        });
+                    }
+                }
+            })
+            .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
+                if (onlineRole === 'spectator') {
+                    setTokens(payload.tokens);
+                    setMoveHistory(payload.moveHistory);
+                    setCurrentTurn(payload.currentTurn);
+                    setTurnCount(payload.moveHistory.length);
+                }
+            })
             .subscribe((status) => {
-                console.log(`Supabase Channel Status [${roomId}]:`, status);
+                if (status === 'SUBSCRIBED' && onlineRole === 'spectator') {
+                    channel.send({ type: 'broadcast', event: 'request_sync' });
+                }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [roomId, user, tokens, onlineRole, triggerEmote, playMoveSound]);
+    }, [roomId, user, tokens, onlineRole, triggerEmote, playMoveSound, currentTurn]);
 
     // CPUターンの処理
     useEffect(() => {
@@ -244,6 +274,20 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             setShowCheckWarning(false);
         }
     }, [isCheck, winner]);
+
+    // Active Match Registration
+    useEffect(() => {
+        if (roomId && onlineRole === 'white' && !winner) {
+            import('../lib/gameRecordService').then(({ registerActiveMatch }) => {
+                registerActiveMatch(roomId, user?.id || null, null);
+            });
+        }
+        if (roomId && onlineRole === 'white' && winner) {
+            import('../lib/gameRecordService').then(({ finishActiveMatch }) => {
+                finishActiveMatch(roomId);
+            });
+        }
+    }, [roomId, onlineRole, winner, user?.id]);
 
     // Save game record when game ends
     useEffect(() => {
@@ -453,7 +497,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     };
 
     const handleSquareClick = (targetRow: number, targetCol: number) => {
-        if (winner) return;
+        if (winner || onlineRole === 'spectator') return;
         
         // Prevent human player from interacting during CPU's turn
         if (!roomId && currentTurn === 'black') return;
@@ -532,9 +576,9 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
 
     const playerName = user?.name || 'Player';
     const opponentName = roomId ? 'Opponent' : `CPU`;
-    const myRole = onlineRole || 'white';
-    const whiteName = myRole === 'white' ? playerName : opponentName;
-    const blackName = myRole === 'black' ? playerName : opponentName;
+    const myRole = onlineRole === 'spectator' ? 'white' : (onlineRole || 'white');
+    const whiteName = onlineRole === 'spectator' ? 'White Player' : (myRole === 'white' ? playerName : opponentName);
+    const blackName = onlineRole === 'spectator' ? 'Black Player' : (myRole === 'black' ? playerName : opponentName);
 
     return (
         <div className="flex flex-col items-center w-full max-w-[800px] relative">
@@ -550,8 +594,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded font-bold ${myRole === 'white' ? 'bg-blue-900 text-blue-300 border border-blue-500/50' : 'bg-red-900 text-red-300 border border-red-500/50'}`}>
-                            YOU: {myRole === 'white' ? '🟦 WHITE' : '🟥 BLACK'}
+                        <span className={`text-xs px-2 py-1 rounded font-bold ${onlineRole === 'spectator' ? 'bg-gray-800 text-gray-300 border border-gray-500' : (myRole === 'white' ? 'bg-blue-900 text-blue-300 border border-blue-500/50' : 'bg-red-900 text-red-300 border border-red-500/50')}`}>
+                            {onlineRole === 'spectator' ? '👁 SPECTATING' : (myRole === 'white' ? 'YOU: 🟦 WHITE' : 'YOU: 🟥 BLACK')}
                         </span>
                     </div>
                 </div>
@@ -729,7 +773,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             </div>
 
             {/* Emote Button & Menu */}
-            {roomId && onlineRole && !winner && (
+            {roomId && onlineRole && onlineRole !== 'spectator' && !winner && (
                 <div className="fixed bottom-4 right-4 z-40">
                     <button
                         onClick={() => setShowEmoteMenu(prev => !prev)}
