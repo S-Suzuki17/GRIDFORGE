@@ -39,8 +39,24 @@ export default function Home() {
         }
     }, [gameState]);
 
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const lastUser = localStorage.getItem('qg_last_user');
+            if (lastUser) {
+                try {
+                    const u = JSON.parse(lastUser);
+                    setUser(u);
+                    setGameState('level_select');
+                } catch (e) {
+                    localStorage.removeItem('qg_last_user');
+                }
+            }
+        }
+    }, []);
+
     const handleLogin = (u: User) => {
         setUser(u);
+        localStorage.setItem('qg_last_user', JSON.stringify(u));
         setGameState('level_select');
     };
 
@@ -59,6 +75,7 @@ export default function Home() {
 
     const handleLogout = () => {
         setUser(null);
+        localStorage.removeItem('qg_last_user');
         setGameState('title');
     };
 

@@ -127,23 +127,51 @@ export function TitleScreen({ lang, onLogin }: TitleScreenProps) {
                 )}
 
                 {mode === 'login' && (
-                    <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
-                        <input 
-                            type="text" 
-                            placeholder={t.enterId}
-                            value={inputId}
-                            onChange={e => setInputId(e.target.value.toUpperCase())}
-                            className="w-full bg-black/50 border border-cyan-500/50 p-3 text-cyan-300 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.3)] text-center text-xl font-mono uppercase"
-                            autoFocus
-                        />
-                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                        <button type="submit" className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-black font-bold tracking-widest transition-all">
-                            {t.login}
-                        </button>
-                        <button type="button" onClick={() => setMode('select')} className="text-cyan-600/80 hover:text-cyan-400 text-sm mt-2">
+                    <div className="flex flex-col gap-4">
+                        <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
+                            <input 
+                                type="text" 
+                                placeholder={t.enterId}
+                                value={inputId}
+                                onChange={e => setInputId(e.target.value.toUpperCase())}
+                                className="w-full bg-black/50 border border-cyan-500/50 p-3 text-cyan-300 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.3)] text-center text-xl font-mono uppercase"
+                                autoFocus
+                            />
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            <button type="submit" className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-black font-bold tracking-widest transition-all">
+                                {t.login}
+                            </button>
+                        </form>
+                        
+                        {(() => {
+                            const savedStr = typeof window !== 'undefined' ? localStorage.getItem('qg_accounts') : null;
+                            const savedAccounts: User[] = savedStr ? JSON.parse(savedStr) : [];
+                            if (savedAccounts.length > 0) {
+                                return (
+                                    <div className="mt-4 pt-4 border-t border-cyan-900/50">
+                                        <p className="text-cyan-600/80 text-xs text-center mb-2">SAVED ACCOUNTS</p>
+                                        <div className="flex flex-col gap-2">
+                                            {savedAccounts.map(account => (
+                                                <button 
+                                                    key={account.id}
+                                                    onClick={() => onLogin(account)}
+                                                    className="w-full py-2 px-4 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded transition-colors text-left flex justify-between items-center"
+                                                >
+                                                    <span className="text-cyan-300 font-bold">{account.name}</span>
+                                                    <span className="text-cyan-600 font-mono text-sm">{account.id}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+
+                        <button type="button" onClick={() => setMode('select')} className="text-cyan-600/80 hover:text-cyan-400 text-sm mt-4">
                             {t.back}
                         </button>
-                    </form>
+                    </div>
                 )}
 
                 {mode === 'rules' && (
