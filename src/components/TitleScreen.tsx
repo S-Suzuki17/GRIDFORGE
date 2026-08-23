@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { dict, Language } from '../locales/dict';
 import { User } from '../types/game';
 import { ensureProfile } from '../lib/gameRecordService';
@@ -17,6 +17,14 @@ export function TitleScreen({ lang, onLogin }: TitleScreenProps) {
     const [inputId, setInputId] = useState('');
     const [generatedId, setGeneratedId] = useState('');
     const [error, setError] = useState('');
+    const [hasRegisteredAccount, setHasRegisteredAccount] = useState(false);
+
+    useEffect(() => {
+        const saved = JSON.parse(localStorage.getItem('qg_accounts') || '[]');
+        if (saved.some((u: User) => u.type === 'registered')) {
+            setHasRegisteredAccount(true);
+        }
+    }, []);
 
     const handleGuest = () => {
         const guestId = `GUEST-${Math.floor(Math.random() * 10000)}`;
@@ -77,9 +85,11 @@ export function TitleScreen({ lang, onLogin }: TitleScreenProps) {
                         <button onClick={handleGuest} className="w-full py-3 px-6 bg-cyan-950/50 border border-cyan-500 hover:bg-cyan-900 transition-all text-cyan-300 font-bold tracking-widest uppercase hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]">
                             {t.guestLogin}
                         </button>
-                        <button onClick={() => setMode('register')} className="w-full py-3 px-6 bg-cyan-950/50 border border-cyan-500 hover:bg-cyan-900 transition-all text-cyan-300 font-bold tracking-widest uppercase hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]">
-                            {t.createAccount}
-                        </button>
+                        {!hasRegisteredAccount && (
+                            <button onClick={() => setMode('register')} className="w-full py-3 px-6 bg-cyan-950/50 border border-cyan-500 hover:bg-cyan-900 transition-all text-cyan-300 font-bold tracking-widest uppercase hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]">
+                                {t.createAccount}
+                            </button>
+                        )}
                         <button onClick={() => setMode('login')} className="w-full py-3 px-6 bg-cyan-950/50 border border-cyan-500 hover:bg-cyan-900 transition-all text-cyan-300 font-bold tracking-widest uppercase hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]">
                             {t.login}
                         </button>

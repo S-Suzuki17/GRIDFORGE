@@ -5,7 +5,7 @@ import { IdentityPool } from '../../../lib/IdentityPool';
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { level, tokens, poolData, cpuPlayer } = body;
+        const { level, tokens, poolData, cpuPlayer, timeControl } = body;
 
         // IdentityPoolを復元
         const pool = new IdentityPool();
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         }
 
         // 深い計算を実行（サーバーサイドなのでUIをブロックしない）
-        const move = calculateDeepMove(level, tokens, pool, cpuPlayer);
+        const move = calculateDeepMove(level, tokens, pool, cpuPlayer, timeControl);
 
         return NextResponse.json({ move });
     } catch (error) {

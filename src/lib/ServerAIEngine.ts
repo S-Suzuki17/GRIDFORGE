@@ -120,9 +120,12 @@ function applyMoveAndResolve(tokens: Token[], pool: IdentityPool, move: AIMove) 
     return { nextTokens: simTokens, nextPool: clonedPool };
 }
 
-export function calculateDeepMove(level: number, tokens: Token[], pool: IdentityPool, cpuPlayer: 'white' | 'black' = 'black'): AIMove | null {
+export function calculateDeepMove(level: number, tokens: Token[], pool: IdentityPool, cpuPlayer: 'white' | 'black' = 'black', timeControl: string = '10m'): AIMove | null {
     const opponent = cpuPlayer === 'white' ? 'black' : 'white';
-    const timeoutMs = level === 5 ? 8000 : 1000;
+    let timeoutMs = 1000;
+    if (level === 5) {
+        timeoutMs = timeControl === '10s' ? 2000 : 8000;
+    }
     const startTime = Date.now();
     
     const moves = getValidMoves(tokens, pool, cpuPlayer);

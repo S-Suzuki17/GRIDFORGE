@@ -235,7 +235,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                                 level: cpuLevel,
                                 tokens,
                                 poolData,
-                                cpuPlayer: 'black'
+                                cpuPlayer: 'black',
+                                timeControl
                             })
                         });
                         const data = await res.json();
