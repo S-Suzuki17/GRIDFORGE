@@ -5,11 +5,12 @@ import { IdentityPool } from '../lib/IdentityPool';
 import { Token, deduceMoveTypes, calculateProbabilities, isPlayerInCheck, checkGameOver, isCheckmate } from '../lib/GameEngine';
 import { QuantumPieceUI } from './QuantumPieceUI';
 import { Language, dict } from '../locales/dict';
-import { User } from '../types/game';
+import { User, TimeControl } from '../types/game';
 import { PieceType } from '../config/gameConfig';
 import { supabase } from '../lib/supabaseClient';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { MoveRecord, saveGameRecord, GameRecord } from '../lib/gameRecordService';
+import { soundManager } from '../lib/SoundService';
 
 interface GameBoardProps {
     lang: Language;
@@ -18,10 +19,11 @@ interface GameBoardProps {
     roomId?: string;
     onlineRole?: 'white' | 'black';
     matchMode?: 'random' | 'private' | 'ranked';
+    timeControl?: TimeControl;
     onHome?: () => void;
 }
 
-export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, matchMode, onHome }: GameBoardProps) {
+export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, matchMode, timeControl = '10m', onHome }: GameBoardProps) {
     const t = dict[lang];
     const [pool] = useState(() => new IdentityPool());
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -35,6 +37,28 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [isCheck, setIsCheck] = useState<boolean>(false);
     const [showCheckWarning, setShowCheckWarning] = useState<boolean>(false);
     const [winner, setWinner] = useState<'white_wins' | 'black_wins' | null>(null);
+
+    const initialTime = timeControl === '10s' ? 10 : timeControl === '3m' ? 180 : 600;
+    const [timeLeftWhite, setTimeLeftWhite] = useState<number>(initialTime);
+    const [timeLeftBlack, setTimeLeftBlack] = useState<number>(initialTime);
+
+    useEffect(() => {
+        if (winner || tokens.length === 0) return; // Don't tick if game over or not started
+        const timer = setInterval(() => {
+            if (currentTurn === 'white') {
+                setTimeLeftWhite(prev => {
+                    if (prev <= 1) { setWinner('black_wins'); return 0; }
+                    return prev - 1;
+                });
+            } else {
+                setTimeLeftBlack(prev => {
+                    if (prev <= 1) { setWinner('white_wins'); return 0; }
+                    return prev - 1;
+                });
+            }
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [currentTurn, winner, tokens.length]);
 
     const [promotionPending, setPromotionPending] = useState<{
         token: Token;
@@ -373,6 +397,11 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         setTokens(updatedTokens);
         setSelectedTokenId(null);
         setCurrentTurn(nextTurn);
+        
+        if (timeControl === '10s') {
+            if (nextTurn === 'white') setTimeLeftWhite(10);
+            else setTimeLeftBlack(10);
+        }
     };
 
     const handleSquareClick = (targetRow: number, targetCol: number) => {
@@ -443,6 +472,12 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         }
     };
 
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     const playerName = user?.name || (lang === 'en' ? 'Guest' : 'ゲスト');
     const opponentName = roomId ? (lang === 'en' ? 'Opponent' : '対戦相手') : `CPU`;
     const myRole = onlineRole || 'white';
@@ -462,23 +497,28 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     </div>
                     <div className="flex items-center gap-2">
                         <span className={`text-xs px-2 py-1 rounded font-bold ${myRole === 'white' ? 'bg-blue-900 text-blue-300 border border-blue-500/50' : 'bg-red-900 text-red-300 border border-red-500/50'}`}>
-                            YOU: {myRole === 'white' ? '⬜ WHITE' : '⬛ BLACK'}
+                            YOU: {myRole === 'white' ? '🟦 WHITE' : '🟥 BLACK'}
                         </span>
                     </div>
                 </div>
             )}
 
-            <div className="w-full flex justify-between items-center mb-4 px-4 py-2 bg-[#111] border border-gray-800 rounded-md z-10">
-                <div className={`text-xl font-bold flex items-center gap-2 ${currentTurn === 'white' ? 'text-blue-400 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
-                    ▶ {playerName}
-                    {isCheck && currentTurn === 'white' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
+            <div className="flex justify-between w-full mb-4 px-4 items-center bg-gray-900/40 py-2 border-b border-cyan-900/50">
+                <div className={`text-xl font-bold flex flex-col items-start gap-1 ${currentTurn === 'white' ? 'text-blue-400 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
+                    <div className="flex items-center gap-2">
+                        🟦 {playerName}
+                    </div>
+                    <span className="text-2xl font-mono">{formatTime(timeLeftWhite)}</span>
                 </div>
                 <div className="text-sm font-bold text-red-500 min-h-[20px] mx-4 text-center">
                     {errorMsg}
                 </div>
-                <div className={`text-xl font-bold flex items-center gap-2 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
-                    {isCheck && currentTurn === 'black' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
-                    {opponentName} ◀
+                <div className={`text-xl font-bold flex flex-col items-end gap-1 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
+                    <div className="flex items-center gap-2">
+                        {isCheck && currentTurn === 'black' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
+                        {opponentName} 🟥
+                    </div>
+                    <span className="text-2xl font-mono">{formatTime(timeLeftBlack)}</span>
                 </div>
             </div>
             

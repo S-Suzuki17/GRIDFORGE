@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { dict, Language } from '../locales/dict';
-import { User } from '../types/game';
+import { User, TimeControl } from '../types/game';
 import { supabase } from '../lib/supabaseClient';
 import { GameRecord, getGameRecords, Profile, getTopProfiles } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
@@ -10,8 +10,8 @@ import { soundManager } from '../lib/SoundService';
 interface LevelSelectProps {
     lang: Language;
     user: User;
-    onSelect: (level: number) => void;
-    onOnlineMatch?: (roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked') => void;
+    onSelect: (level: number, tc: TimeControl) => void;
+    onOnlineMatch?: (roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => void;
     onReplay?: (record: GameRecord) => void;
     onBack: () => void;
 }
@@ -29,6 +29,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [showLeaderboard, setShowLeaderboard] = React.useState(false);
     const [leaderboard, setLeaderboard] = React.useState<Profile[]>([]);
     const [loadingLeaderboard, setLoadingLeaderboard] = React.useState(false);
+    const [timeControl, setTimeControl] = React.useState<TimeControl>('10m');
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     React.useEffect(() => {
@@ -68,13 +69,13 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 });
             }, 50);
         } else {
-            onSelect(level);
+            onSelect(level, timeControl);
         }
     };
 
     const handleAdFinish = () => {
         if (adLevel) {
-            onSelect(adLevel);
+            onSelect(adLevel, timeControl);
             setAdLevel(null);
         }
     };
@@ -92,7 +93,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         
         const myId = user.id + '_' + Date.now();
         const matchedRef = { current: false };
-        const channelName = mode === 'ranked' ? 'matchmaking_ranked' : 'matchmaking_lobby';
+        const channelName = mode === 'ranked' ? `matchmaking_ranked_${timeControl}` : `matchmaking_lobby_${timeControl}`;
         const channel = supabase.channel(channelName, {
             config: { presence: { key: myId } }
         });
@@ -125,7 +126,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             });
                             setTimeout(() => {
                                 cancelSearch();
-                                onOnlineMatch?.(roomId, 'white', mode);
+                                onOnlineMatch?.(roomId, 'white', mode, timeControl);
                             }, 300);
                             return;
                         }
@@ -139,7 +140,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 if (payload.joinerKey === myId) {
                     matchedRef.current = true;
                     cancelSearch();
-                    onOnlineMatch?.(payload.roomId, 'black', payload.mode);
+                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, timeControl);
                 }
             })
             .subscribe(async (status) => {
@@ -228,7 +229,18 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 </h2>
             </div>
 
-            <div className="w-full max-w-md flex flex-col gap-4">
+            <div className="w-full max-w-md flex flex-col gap-4 mt-8">
+                
+                {/* 持ち時間設定 */}
+                <div className="flex flex-col gap-2 mb-2 p-4 bg-cyan-950/20 border border-cyan-900 rounded">
+                    <span className="text-cyan-400 font-bold text-sm tracking-widest">{t.timeLimit}</span>
+                    <div className="flex gap-2">
+                        <button onClick={() => setTimeControl('10s')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '10s' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc10s}</button>
+                        <button onClick={() => setTimeControl('3m')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '3m' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc3m}</button>
+                        <button onClick={() => setTimeControl('10m')} className={`flex-1 py-2 rounded text-xs font-bold transition-all ${timeControl === '10m' ? 'bg-cyan-600 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-cyan-950/30 text-cyan-500 border border-cyan-800'}`}>{t.tc10m}</button>
+                    </div>
+                </div>
+
                 <button 
                     onClick={() => handleLevelClick(5)}
                     className="group relative w-full p-4 bg-black/40 border border-red-500/50 hover:bg-red-950/30 transition-all rounded text-left overflow-hidden hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
@@ -287,7 +299,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         <button 
                             onClick={() => {
                                 const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                onOnlineMatch?.(newRoomId, 'white', 'private');
+                                onOnlineMatch?.(newRoomId, 'white', 'private', timeControl);
                             }}
                             className="w-full p-3 bg-blue-900/50 hover:bg-blue-800/50 border border-blue-400 rounded text-blue-300 font-bold transition-colors"
                         >
@@ -304,7 +316,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             />
                             <button 
                                 onClick={() => {
-                                    if(joinRoomId) onOnlineMatch?.(joinRoomId, 'black', 'private');
+                                    if(joinRoomId) onOnlineMatch?.(joinRoomId, 'black', 'private', timeControl);
                                 }}
                                 className="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-400 rounded text-red-300 font-bold transition-colors"
                             >

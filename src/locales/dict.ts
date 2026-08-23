@@ -2,7 +2,12 @@ export type Language = 'en' | 'ja';
 
 export const dict = {
     en: {
-        blueTurn: '▶ BLUE (WHITE)',
+        timeLimit: "TIME LIMIT",
+        tc10s: "10s / move",
+        tc3m: "3 min / player",
+        tc10m: "10 min / player",
+        timeOver: "TIME OVER",
+        blueTurn: '🟦 BLUE (WHITE)',
         redTurn: 'RED (BLACK) ◀',
         errInvalidMove: 'Invalid move based on classical chess rules.',
         errIdentity: "Move doesn't match remaining possibilities",
@@ -95,7 +100,12 @@ export const dict = {
         rule4: "4. Victory: The game ends when a King is captured or Checkmated. Be careful—any unknown token could be the enemy King!"
     },
     ja: {
-        blueTurn: '▶ BLUE (YOU)',
+        timeLimit: "持ち時間",
+        tc10s: "一手10秒",
+        tc3m: "3分切れ負け",
+        tc10m: "10分切れ負け",
+        timeOver: "時間切れ (TIME OVER)",
+        blueTurn: '🟦 BLUE (YOU)',
         redTurn: 'RED (CPU) ◀',
         errInvalidMove: 'チェスのルール上、無効な移動です',
         errIdentity: '残された可能性に一致しない移動です',

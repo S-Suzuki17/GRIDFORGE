@@ -7,7 +7,7 @@ import { TitleScreen } from '../components/TitleScreen';
 import { LevelSelect } from '../components/LevelSelect';
 import ReplayBoard from '../components/ReplayBoard';
 import { Language } from '../locales/dict';
-import { User, GameState } from '../types/game';
+import { User, GameState, TimeControl } from '../types/game';
 import { GameRecord } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
 
@@ -27,12 +27,10 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        if (gameState === 'playing') {
-            soundManager.playBGM('/audio/bgm_playing.mp3');
-        } else if (gameState === 'title' || gameState === 'level_select') {
-            // LevelSelect has matchmaking state inside it, but we can't easily read it from page.tsx.
-            // So we'll just play title BGM, and LevelSelect can override it to waiting BGM.
+        if (gameState === 'title') {
             soundManager.playBGM('/audio/bgm_title.mp3');
+        } else if (gameState === 'playing') {
+            soundManager.playBGM('/audio/bgm_playing.mp3');
         } else if (gameState === 'replay') {
             soundManager.playBGM('/audio/bgm_replay.mp3');
         } else {
@@ -45,14 +43,16 @@ export default function Home() {
         setGameState('level_select');
     };
 
-    const handleSelectLevel = (level: number) => {
+    const handleSelectLevel = (level: number, tc: TimeControl) => {
         setCpuLevel(level);
+        setTimeControl(tc);
         setOnlineInfo(null);
         setGameState('playing');
     };
 
-    const handleOnlineMatch = (roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked') => {
+    const handleOnlineMatch = (roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl) => {
         setOnlineInfo({ roomId, role, matchMode });
+        setTimeControl(tc);
         setGameState('playing');
     };
 
@@ -167,6 +167,7 @@ export default function Home() {
                         roomId={onlineInfo?.roomId}
                         onlineRole={onlineInfo?.role}
                         matchMode={onlineInfo?.matchMode}
+                        timeControl={timeControl}
                         onHome={() => setGameState('level_select')}
                     />
                 )}
