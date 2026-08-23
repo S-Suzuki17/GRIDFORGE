@@ -544,7 +544,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             ].map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => handleCategoryChange(tab.id as any)}
+                                    onClick={() => handleCategoryChange(tab.id as TimeControl | 'all')}
                                     className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
                                         leaderboardCategory === tab.id
                                             ? 'bg-fuchsia-600 text-white shadow-[0_0_10px_rgba(217,70,239,0.5)]'
