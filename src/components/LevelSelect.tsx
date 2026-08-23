@@ -185,34 +185,24 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         const hostKey = sorted[i];
                         const joinerKey = sorted[i + 1];
                         
-                        if (hostKey === myId) {
+                        if (hostKey === myId || joinerKey === myId) {
                             matchedRef.current = true;
                             triggerMatchNotification();
-                            const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-                            channel.send({
-                                type: 'broadcast',
-                                event: 'match_ready',
-                                payload: { roomId, hostKey: myId, joinerKey, mode }
-                            });
+                            
+                            // Deterministic Room ID
+                            const combined = hostKey > joinerKey ? hostKey + joinerKey : joinerKey + hostKey;
+                            const roomId = Array.from(combined).reduce((acc, char) => (acc + char.charCodeAt(0)) % 1000000, 0).toString(36).toUpperCase();
+                            
+                            const role = hostKey === myId ? 'white' : 'black';
+                            const opponentId = (role === 'white' ? joinerKey : hostKey).split('_')[0];
+                            
                             setTimeout(() => {
                                 cancelSearch();
-                                const opponentId = joinerKey.split('_')[0];
-                                onOnlineMatch?.(roomId, 'white', mode, tc, opponentId);
+                                onOnlineMatch?.(roomId, role, mode, tc, opponentId);
                             }, 300);
                             return;
                         }
                     }
-                }
-            })
-            .on('broadcast', { event: 'match_ready' }, ({ payload }) => {
-                if (matchedRef.current) return;
-                
-                if (payload.joinerKey === myId) {
-                    matchedRef.current = true;
-                    triggerMatchNotification();
-                    cancelSearch();
-                    const opponentId = payload.hostKey.split('_')[0];
-                    onOnlineMatch?.(payload.roomId, 'black', payload.mode, tc, opponentId);
                 }
             })
             .subscribe(async (status) => {
