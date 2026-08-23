@@ -177,13 +177,31 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         channelRef.current = channel;
 
         channel
+            .on('broadcast', { event: 'match_found' }, ({ payload }) => {
+                if (matchedRef.current) return;
+                
+                if (payload.hostKey === myId || payload.joinerKey === myId) {
+                    matchedRef.current = true;
+                    triggerMatchNotification();
+                    
+                    const role = payload.hostKey === myId ? 'white' : 'black';
+                    const opponentId = (role === 'white' ? payload.joinerKey : payload.hostKey).split('_')[0];
+                    
+                    setMatchFound(true);
+                    channel.untrack();
+                    setTimeout(() => {
+                        cancelSearch();
+                        onOnlineMatch?.(payload.roomId, role, mode, tc, opponentId);
+                        setMatchFound(false);
+                    }, 2000);
+                }
+            })
             .on('presence', { event: 'sync' }, () => {
                 if (matchedRef.current) return;
                 
                 const state = channel.presenceState();
                 const rawKeys = Object.keys(state);
                 
-                // Deduplicate ghosts (same user.id) by keeping only the newest presence
                 const uniqueUsers = new Map<string, string>();
                 for (const key of rawKeys) {
                     const userId = key.split('_')[0];
@@ -205,18 +223,15 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     const sorted = validKeys.sort((a, b) => {
                         const tsA = parseInt(a.split('_')[1] || '0');
                         const tsB = parseInt(b.split('_')[1] || '0');
-                        return tsA - tsB; // Oldest first for fair matchmaking
+                        return tsA - tsB; // Oldest first
                     });
                     
                     for (let i = 0; i < sorted.length - 1; i += 2) {
                         const hostKey = sorted[i];
                         const joinerKey = sorted[i + 1];
                         
-                        if (hostKey === myId || joinerKey === myId) {
-                            matchedRef.current = true;
-                            triggerMatchNotification();
-                            
-                            // Deterministic Room ID
+                        // ONLY the host initiates the broadcast to avoid duplicate events and race conditions
+                        if (hostKey === myId) {
                             const combined = hostKey > joinerKey ? hostKey + joinerKey : joinerKey + hostKey;
                             let hash = 5381;
                             for (let i = 0; i < combined.length; i++) {
@@ -224,16 +239,14 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             }
                             const roomId = Math.abs(hash).toString(36).toUpperCase();
                             
-                            const role = hostKey === myId ? 'white' : 'black';
-                            const opponentId = (role === 'white' ? joinerKey : hostKey).split('_')[0];
-                            
-                            setMatchFound(true);
-                            channel.untrack();
-                            setTimeout(() => {
-                                cancelSearch();
-                                onOnlineMatch?.(roomId, role, mode, tc, opponentId);
-                                setMatchFound(false);
-                            }, 2000);
+                            channel.send({
+                                type: 'broadcast',
+                                event: 'match_found',
+                                payload: { hostKey, joinerKey, roomId }
+                            });
+                            return;
+                        } else if (joinerKey === myId) {
+                            // Joiner just waits for the broadcast from the host
                             return;
                         }
                     }
