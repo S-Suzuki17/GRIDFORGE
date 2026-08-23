@@ -1,4 +1,5 @@
-import { PieceType, GameConfig } from '../config/gameConfig';
+import { PieceType } from '../config/gameConfig';
+import { Token } from '../types/game';
 
 export class IdentityPool {
     // 未確定のまま残っている各駒のストック数
@@ -8,6 +9,16 @@ export class IdentityPool {
 
     // 各トークン（駒ID）が現在なり得る「正体の可能性」
     public piecePossibilities: Map<string, Set<PieceType>> = new Map();
+
+    constructor(initialPool?: Record<PieceType, number>, initialPossibilities?: Map<string, Set<PieceType>>) {
+        if (initialPool) this.remainingPool = { ...initialPool };
+        if (initialPossibilities) {
+            this.piecePossibilities = new Map();
+            initialPossibilities.forEach((val, key) => {
+                this.piecePossibilities.set(key, new Set(val));
+            });
+        }
+    }
 
     /**
      * 新しい未確定トークンを登録する（初期化）
@@ -41,7 +52,7 @@ export class IdentityPool {
      * 全体トークンの情報を受け取り、数独のように「必ずその駒になる」制約を伝播させる
      * @returns {boolean} 矛盾が生じた（ありえない状態になった）場合は false, 正常に解決された場合は true
      */
-    resolveGlobalConstraints(tokens: any[]): boolean { // Token型を想定
+    resolveGlobalConstraints(tokens: Token[]): boolean { // Token型を想定
         const MAX_COUNTS = { King: 1, Queen: 1, Rook: 2, Bishop: 2, Knight: 2, Pawn: 8 };
         const ALL_TYPES = ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn'] as PieceType[];
 
@@ -127,7 +138,7 @@ export class IdentityPool {
     /**
      * ランダムな具体的な配置（Determinization）をサンプリングする
      */
-    sampleDeterminization(tokens: any[]): Record<string, PieceType> | null {
+    sampleDeterminization(tokens: Token[]): Record<string, PieceType> | null {
         const assignment: Record<string, PieceType> = {};
         
         for (const player of ['white', 'black']) {
@@ -135,7 +146,7 @@ export class IdentityPool {
             const maxPieces = { King: 1, Queen: 1, Rook: 2, Bishop: 2, Knight: 2, Pawn: 8 };
             const usedCounts = { King: 0, Queen: 0, Rook: 0, Bishop: 0, Knight: 0, Pawn: 0 };
             
-            const unresolvedTokens: any[] = [];
+            const unresolvedTokens: Token[] = [];
             for (const t of playerTokens) {
                 const poss = this.piecePossibilities.get(t.id);
                 if (!poss) continue;
@@ -148,7 +159,7 @@ export class IdentityPool {
                 }
             }
 
-            const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
+            const shuffle = (array: PieceType[]) => array.sort(() => Math.random() - 0.5);
             
             const dfs = (index: number): boolean => {
                 if (index === unresolvedTokens.length) return true;

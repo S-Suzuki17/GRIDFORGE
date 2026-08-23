@@ -13,6 +13,7 @@ export function usePieceSound(audioUrl: string) {
         
         const initContext = () => {
             if (!contextRef.current) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
                 if (AudioContextClass) {
                     contextRef.current = new AudioContextClass();

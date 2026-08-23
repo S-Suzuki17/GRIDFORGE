@@ -177,7 +177,7 @@ export class ISMCTS {
                     if (token.row === r && token.col === c) continue;
                     if (tokens.some(t => !t.isCaptured && t.row === r && t.col === c && t.player === player)) continue;
 
-                    const tempToken = { ...token, probabilities: { [actualType]: 1 } as any };
+                    const tempToken = { ...token, probabilities: { [actualType]: 1 } as Record<PieceType, number> };
                     const moveTypes = deduceMoveTypes(tempToken, r, c, tokens);
                     
                     if (moveTypes.includes(actualType)) {

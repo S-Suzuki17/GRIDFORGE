@@ -170,7 +170,7 @@ export async function getTopProfiles(timeControl?: string): Promise<Profile[]> {
 }
 
 export async function ensureProfile(id: string, name: string): Promise<Profile | null> {
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', id)
