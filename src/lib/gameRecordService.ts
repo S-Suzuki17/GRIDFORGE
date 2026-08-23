@@ -91,6 +91,66 @@ export async function getGameRecord(id: string): Promise<GameRecord | null> {
     return data;
 }
 
+export interface UserStats {
+    totalGames: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    whiteGames: number;
+    whiteWins: number;
+    blackGames: number;
+    blackWins: number;
+}
+
+export async function getUserStats(userId: string): Promise<UserStats> {
+    const stats: UserStats = {
+        totalGames: 0, wins: 0, losses: 0, draws: 0,
+        whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0
+    };
+
+    // Get all games where user is white or black
+    const { data: whiteData, error: whiteError } = await supabase
+        .from('game_records')
+        .select('winner')
+        .eq('white_id', userId);
+
+    const { data: blackData, error: blackError } = await supabase
+        .from('game_records')
+        .select('winner')
+        .eq('black_id', userId);
+
+    if (!whiteError && whiteData) {
+        stats.whiteGames = whiteData.length;
+        whiteData.forEach(game => {
+            if (game.winner === 'white_wins') {
+                stats.wins++;
+                stats.whiteWins++;
+            } else if (game.winner === 'black_wins') {
+                stats.losses++;
+            } else if (game.winner === 'draw') {
+                stats.draws++;
+            }
+        });
+    }
+
+    if (!blackError && blackData) {
+        stats.blackGames = blackData.length;
+        blackData.forEach(game => {
+            if (game.winner === 'black_wins') {
+                stats.wins++;
+                stats.blackWins++;
+            } else if (game.winner === 'white_wins') {
+                stats.losses++;
+            } else if (game.winner === 'draw') {
+                stats.draws++;
+            }
+        });
+    }
+
+    stats.totalGames = stats.whiteGames + stats.blackGames;
+    return stats;
+}
+
 export async function getTopProfiles(timeControl?: string): Promise<Profile[]> {
     const ratingColumn = timeControl === '10s' ? 'rating_10s' 
                        : timeControl === '3m' ? 'rating_3m' 

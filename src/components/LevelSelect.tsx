@@ -4,7 +4,7 @@ import React from 'react';
 import { dict, Language } from '../locales/dict';
 import { User, TimeControl } from '../types/game';
 import { supabase } from '../lib/supabaseClient';
-import { GameRecord, getGameRecords, Profile, getTopProfiles } from '../lib/gameRecordService';
+import { GameRecord, getGameRecords, Profile, getTopProfiles, UserStats } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
 import { getTitleFromRating } from '../lib/rankSystem';
 
@@ -33,6 +33,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl | 'all'>('all');
     const [pendingAction, setPendingAction] = React.useState<{ type: 'cpu' | 'ranked' | 'random' | 'host' | 'join'; level?: number; roomId?: string } | null>(null);
     const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
+    const [userStats, setUserStats] = React.useState<UserStats | null>(null);
     const [showAccount, setShowAccount] = React.useState(false);
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -43,6 +44,14 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             });
         });
     }, [user.id, user.name]);
+
+    React.useEffect(() => {
+        if (showAccount && !userStats) {
+            import('../lib/gameRecordService').then(({ getUserStats }) => {
+                getUserStats(user.id).then(stats => setUserStats(stats));
+            });
+        }
+    }, [showAccount, user.id, userStats]);
 
     React.useEffect(() => {
         if (isSearching) {
@@ -170,7 +179,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     await channel.track({ userId: user.id, name: user.name });
                 }
             });
-    }, [user, onOnlineMatch, cancelSearch]);
+    }, [user, onOnlineMatch, cancelSearch, t.opponentFound]);
 
     const handleTimeControlConfirm = (tc: TimeControl) => {
         if (!pendingAction) return;
@@ -342,6 +351,54 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                                         <span className="text-[10px] text-gray-500 mb-1">10 MIN</span>
                                         <span className="font-mono text-cyan-400 font-bold">{userProfile ? Math.floor(userProfile.rating_10m) : '---'}</span>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p className="text-xs text-cyan-600 font-bold mb-1">STATISTICS (BETA)</p>
+                                <div className="bg-black border border-cyan-900/50 rounded p-3 text-xs text-gray-300">
+                                    {!userStats ? (
+                                        <div className="text-center text-gray-600 animate-pulse">Loading stats...</div>
+                                    ) : userStats.totalGames === 0 ? (
+                                        <div className="text-center text-gray-600">No games played yet.</div>
+                                    ) : (
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex justify-between items-end">
+                                                <span>Total Games: <strong className="text-white">{userStats.totalGames}</strong></span>
+                                                <span className="text-cyan-400 font-bold text-sm">
+                                                    WIN RATE: {Math.round((userStats.wins / userStats.totalGames) * 100)}%
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Win/Loss/Draw Bar */}
+                                            <div className="w-full h-2 rounded-full overflow-hidden flex bg-gray-800">
+                                                <div style={{ width: `${(userStats.wins / userStats.totalGames) * 100}%` }} className="bg-cyan-500 h-full" />
+                                                <div style={{ width: `${(userStats.draws / userStats.totalGames) * 100}%` }} className="bg-gray-500 h-full" />
+                                                <div style={{ width: `${(userStats.losses / userStats.totalGames) * 100}%` }} className="bg-red-500 h-full" />
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-gray-500">
+                                                <span className="text-cyan-500">{userStats.wins} W</span>
+                                                <span className="text-gray-500">{userStats.draws} D</span>
+                                                <span className="text-red-500">{userStats.losses} L</span>
+                                            </div>
+                                            
+                                            {/* White vs Black stats */}
+                                            <div className="flex justify-between mt-2 pt-2 border-t border-gray-800">
+                                                <div className="flex flex-col items-center w-1/2 border-r border-gray-800">
+                                                    <span className="text-[10px] text-gray-500 mb-1">AS WHITE (W/L)</span>
+                                                    <span>
+                                                        <strong className="text-blue-300">{userStats.whiteWins}</strong> - {userStats.whiteGames - userStats.whiteWins}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-center w-1/2">
+                                                    <span className="text-[10px] text-gray-500 mb-1">AS BLACK (W/L)</span>
+                                                    <span>
+                                                        <strong className="text-red-300">{userStats.blackWins}</strong> - {userStats.blackGames - userStats.blackWins}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
