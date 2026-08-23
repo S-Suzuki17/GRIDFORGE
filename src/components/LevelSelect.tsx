@@ -6,6 +6,7 @@ import { User, TimeControl } from '../types/game';
 import { supabase } from '../lib/supabaseClient';
 import { GameRecord, getGameRecords, Profile, getTopProfiles } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
+import { getTitleFromRating } from '../lib/rankSystem';
 
 interface LevelSelectProps {
     lang: Language;
@@ -101,6 +102,19 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const startRandomMatch = React.useCallback((mode: 'random' | 'ranked', tc: TimeControl) => {
         setIsSearching(true);
         
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        
+        const triggerMatchNotification = () => {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(t.opponentFound || 'Match Found!', {
+                    body: 'Your opponent is ready. Click to return to game!',
+                    icon: '/icon-192.png'
+                });
+            }
+        };
+
         const myId = user.id + '_' + Date.now();
         const matchedRef = { current: false };
         const channelName = mode === 'ranked' ? `matchmaking_ranked_${tc}` : `matchmaking_lobby_${tc}`;
@@ -117,17 +131,15 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 const keys = Object.keys(state);
                 
                 if (keys.length >= 2) {
-                    // Sort all keys deterministically
                     const sorted = keys.sort();
                     
-                    // Pair up: [0]+[1], [2]+[3], etc.
                     for (let i = 0; i < sorted.length - 1; i += 2) {
                         const hostKey = sorted[i];
                         const joinerKey = sorted[i + 1];
                         
                         if (hostKey === myId) {
-                            // I'm the host for this pair
                             matchedRef.current = true;
+                            triggerMatchNotification();
                             const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
                             channel.send({
                                 type: 'broadcast',
@@ -146,9 +158,9 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             .on('broadcast', { event: 'match_ready' }, ({ payload }) => {
                 if (matchedRef.current) return;
                 
-                // Only respond if I'm the specifically designated joiner
                 if (payload.joinerKey === myId) {
                     matchedRef.current = true;
+                    triggerMatchNotification();
                     cancelSearch();
                     onOnlineMatch?.(payload.roomId, 'black', payload.mode, tc);
                 }
@@ -299,7 +311,17 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         <div className="flex flex-col gap-4 text-left mb-8">
                             <div>
                                 <p className="text-xs text-cyan-600 font-bold mb-1">NAME</p>
-                                <p className="text-lg text-white font-bold">{user.name}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-lg text-white font-bold">{user.name}</p>
+                                    {userProfile && (() => {
+                                        const title = getTitleFromRating(userProfile.rating_10m || 1200);
+                                        return (
+                                            <span className={`text-xs px-2 py-0.5 rounded border border-current ${title.color} bg-black`}>
+                                                {title.icon} {title.name}
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
                             </div>
                             <div>
                                 <p className="text-xs text-cyan-600 font-bold mb-1">ID (Keep Secret)</p>
@@ -554,7 +576,17 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                                                 <span className={`text-lg font-black ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
                                                     #{index + 1}
                                                 </span>
-                                                <span className="font-bold text-gray-200">{p.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-gray-200">{p.name}</span>
+                                                    {(() => {
+                                                        const title = getTitleFromRating(ratingVal);
+                                                        return (
+                                                            <span className={`text-[10px] ${title.color}`}>
+                                                                {title.icon} {title.name}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
                                             <div className="text-fuchsia-400 font-mono font-bold tracking-widest">
                                                 {ratingVal}

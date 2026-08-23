@@ -24,6 +24,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Q-GAMBIT | Quantum Superposition Chess",
   description: "Play Quantum Chess online! Pieces are in a state of superposition. Observe, collapse, and outsmart your opponent.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
