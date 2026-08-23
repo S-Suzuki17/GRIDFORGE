@@ -7,6 +7,7 @@ export interface AIMove {
     targetRow: number;
     targetCol: number;
     possibleTypes: PieceType[];
+    promotedTo?: PieceType;
 }
 
 // 簡易的な駒の価値（確率計算用の重み）

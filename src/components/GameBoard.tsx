@@ -447,7 +447,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 return;
             }
 
-            if (!promotedTo && (targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
+            if ((targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
                 setPromotionPending({
                     token,
                     targetRow,

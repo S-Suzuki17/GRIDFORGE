@@ -16,6 +16,7 @@ export default function Home() {
     const [gameState, setGameState] = useState<GameState>('title');
     const [user, setUser] = useState<User | null>(null);
     const [cpuLevel, setCpuLevel] = useState<number>(1);
+    const [timeControl, setTimeControl] = useState<TimeControl>('10m');
     const [onlineInfo, setOnlineInfo] = useState<{ roomId: string, role: 'white' | 'black', matchMode: 'random' | 'private' | 'ranked' } | null>(null);
     const [replayRecord, setReplayRecord] = useState<GameRecord | null>(null);
     const [soundConfig, setSoundConfig] = useState(() => soundManager.getConfig());

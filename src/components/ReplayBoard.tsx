@@ -16,30 +16,33 @@ interface ReplayBoardProps {
 export default function ReplayBoard({ lang, record, onHome }: ReplayBoardProps) {
     const t = dict[lang];
     const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
-    const [tokens, setTokens] = useState<Token[]>([]);
-
-    useEffect(() => {
+    const tokens = useMemo(() => {
         // Rebuild state from scratch up to currentMoveIndex
         const pool = new IdentityPool();
-        const initialTokens: Token[] = [];
+        let currentTokens: Token[] = [];
         let idCounter = 1;
+        
         [0, 1, 6, 7].forEach(row => {
             const player = row <= 1 ? 'black' : 'white';
             for (let col = 0; col < 8; col++) {
                 const id = `token_${idCounter++}`;
                 pool.registerPiece(id);
-                initialTokens.push({
-                    id, player, row, col,
+                currentTokens.push({ 
+                    id, player, row, col, 
+                    isCaptured: false, hasMoved: false, 
                     probabilities: calculateProbabilities(pool, id)
                 });
             }
         });
 
-        let currentTokens = [...initialTokens];
-
         for (let i = 0; i < currentMoveIndex; i++) {
             const move = record.moves[i];
-            pool.restrictIdentity(move.tokenId, move.possibleTypes);
+            
+            if (move.promotedTo) {
+                pool.restrictIdentity(move.tokenId, ['Pawn']);
+            } else {
+                pool.restrictIdentity(move.tokenId, move.possibleTypes);
+            }
 
             currentTokens = currentTokens.map(t => {
                 if (move.capturedTokenId && t.id === move.capturedTokenId) {
@@ -48,19 +51,26 @@ export default function ReplayBoard({ lang, record, onHome }: ReplayBoardProps) 
                     return { ...t, isCaptured: true, row: -1, col: -1 };
                 }
                 if (t.id === move.tokenId) {
-                    return { ...t, row: move.to[0], col: move.to[1] };
+                    return { ...t, row: move.to[0], col: move.to[1], hasMoved: true, promotedTo: move.promotedTo || t.promotedTo };
+                }
+                // Handle Castling
+                if (move.possibleTypes.includes('King') && Math.abs(move.to[1] - move.from[1]) === 2) {
+                    const rookCol = move.to[1] > move.from[1] ? 7 : 0;
+                    const newRookCol = move.to[1] > move.from[1] ? move.to[1] - 1 : move.to[1] + 1;
+                    if (t.player === move.player && t.row === move.from[0] && t.col === rookCol && !t.hasMoved) {
+                        return { ...t, col: newRookCol, hasMoved: true };
+                    }
+                    pool.restrictIdentity(move.tokenId, ['King']);
                 }
                 return t;
             });
             pool.resolveGlobalConstraints(currentTokens);
         }
 
-        currentTokens = currentTokens.map(t => ({
+        return currentTokens.map(t => ({
             ...t,
             probabilities: calculateProbabilities(pool, t.id)
         }));
-
-        setTokens(currentTokens);
     }, [currentMoveIndex, record]);
 
     const handleNext = () => {
