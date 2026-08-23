@@ -159,7 +159,7 @@ export class IdentityPool {
                 }
             }
 
-            const shuffle = (array: PieceType[]) => array.sort(() => Math.random() - 0.5);
+            const shuffle = <T>(array: T[]): T[] => array.sort(() => Math.random() - 0.5);
             
             const dfs = (index: number): boolean => {
                 if (index === unresolvedTokens.length) return true;
