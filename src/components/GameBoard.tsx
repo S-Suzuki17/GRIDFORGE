@@ -35,7 +35,9 @@ interface GameBoardProps {
 
 export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, matchMode, opponentId, timeControl = '10m', onHome }: GameBoardProps) {
     const t = dict[lang];
-    const [pool] = useState(() => new IdentityPool());
+    const [pool, setPool] = useState(() => new IdentityPool());
+    const poolRef = useRef<IdentityPool>(pool);
+    useEffect(() => { poolRef.current = pool; }, [pool]);
     const [tokens, setTokens] = useState<Token[]>([]);
     const tokensRef = useRef<Token[]>([]);
     const executeMoveRef = useRef<any>(null);
@@ -79,6 +81,12 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const initialTime = timeControl === '10s' ? 10 : timeControl === '3m' ? 180 : 600;
     const [timeLeftWhite, setTimeLeftWhite] = useState<number>(initialTime);
     const [timeLeftBlack, setTimeLeftBlack] = useState<number>(initialTime);
+
+    useEffect(() => {
+        if (winner && typeof window !== 'undefined') {
+            localStorage.removeItem('qg_active_online_match');
+        }
+    }, [winner]);
 
     useEffect(() => {
         if (winner || tokens.length === 0) return; // Don't tick if game over or not started
@@ -242,33 +250,48 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             })
             .on('broadcast', { event: 'request_sync' }, () => {
                 if (onlineRole === 'white' || onlineRole === 'black') {
-                    // Host (White ideally) responds with current state
-                    if (onlineRole === 'white' || (onlineRole === 'black' && currentTurn === 'black')) {
-                        channel.send({
-                            type: 'broadcast',
-                            event: 'sync_state',
-                            payload: { 
-                                tokens: tokensRef.current, 
-                                moveHistory: moveHistoryRef.current,
-                                currentTurn
-                            }
-                        });
-                    }
+                    // Send full game state to reconnecting player or spectator
+                    const serializedPool = {
+                        piecePossibilities: Object.fromEntries(
+                            Array.from(poolRef.current.piecePossibilities.entries()).map(([k, v]) => [k, Array.from(v)])
+                        )
+                    };
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'sync_state',
+                        payload: { 
+                            tokens: tokensRef.current, 
+                            moveHistory: moveHistoryRef.current,
+                            currentTurn,
+                            timeLeftWhite,
+                            timeLeftBlack,
+                            poolData: serializedPool
+                        }
+                    });
                 }
             })
             .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
-                if (onlineRole === 'spectator') {
+                // If we receive state from peer and our local move count is less than or equal to incoming:
+                if (payload?.tokens && payload?.moveHistory && (onlineRole === 'spectator' || payload.moveHistory.length >= moveHistoryRef.current.length)) {
                     setTokens(payload.tokens);
                     setMoveHistory(payload.moveHistory);
                     setCurrentTurn(payload.currentTurn);
                     setTurnCount(payload.moveHistory.length);
+                    if (typeof payload.timeLeftWhite === 'number') setTimeLeftWhite(payload.timeLeftWhite);
+                    if (typeof payload.timeLeftBlack === 'number') setTimeLeftBlack(payload.timeLeftBlack);
+                    if (payload.poolData?.piecePossibilities) {
+                        const newPool = new IdentityPool();
+                        newPool.piecePossibilities = new Map(
+                            Object.entries(payload.poolData.piecePossibilities).map(([k, v]) => [k, new Set(v as PieceType[])])
+                        );
+                        setPool(newPool);
+                    }
                 }
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
-                    if (onlineRole === 'spectator') {
-                        channel.send({ type: 'broadcast', event: 'request_sync' });
-                    }
+                    // Request sync upon subscription so reconnecting players catch up immediately
+                    channel.send({ type: 'broadcast', event: 'request_sync' });
                     await channel.track({ online_at: new Date().toISOString() });
                 }
             });

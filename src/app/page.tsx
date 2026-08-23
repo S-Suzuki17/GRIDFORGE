@@ -46,6 +46,30 @@ export default function Home() {
                 try {
                     const u = JSON.parse(lastUser);
                     setUser(u);
+                    
+                    // Check if there is an active online match from within the last 15 minutes
+                    const activeMatchStr = localStorage.getItem('qg_active_online_match');
+                    if (activeMatchStr) {
+                        try {
+                            const match = JSON.parse(activeMatchStr);
+                            if (match.roomId && match.role && Date.now() - (match.timestamp || 0) < 15 * 60 * 1000) {
+                                setOnlineInfo({
+                                    roomId: match.roomId,
+                                    role: match.role,
+                                    matchMode: match.matchMode,
+                                    opponentId: match.opponentId
+                                });
+                                setTimeControl(match.tc || '10m');
+                                setGameState('playing');
+                                return;
+                            } else {
+                                localStorage.removeItem('qg_active_online_match');
+                            }
+                        } catch (e) {
+                            localStorage.removeItem('qg_active_online_match');
+                        }
+                    }
+                    
                     setGameState('level_select');
                 } catch (e) {
                     localStorage.removeItem('qg_last_user');
@@ -64,12 +88,25 @@ export default function Home() {
         setCpuLevel(level);
         setTimeControl(tc);
         setOnlineInfo(null);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('qg_active_online_match');
+        }
         setGameState('playing');
     };
 
     const handleOnlineMatch = (roomId: string, role: 'white' | 'black' | 'spectator', matchMode: 'random' | 'private' | 'ranked', tc: TimeControl, opponentId?: string) => {
         setOnlineInfo({ roomId, role, matchMode, opponentId });
         setTimeControl(tc);
+        if (typeof window !== 'undefined' && role !== 'spectator') {
+            localStorage.setItem('qg_active_online_match', JSON.stringify({
+                roomId,
+                role,
+                matchMode,
+                tc,
+                opponentId,
+                timestamp: Date.now()
+            }));
+        }
         setGameState('playing');
     };
 
@@ -197,7 +234,13 @@ export default function Home() {
                         matchMode={onlineInfo?.matchMode}
                         opponentId={onlineInfo?.opponentId}
                         timeControl={timeControl}
-                        onHome={() => setGameState('level_select')}
+                        onHome={() => {
+                            if (typeof window !== 'undefined') {
+                                localStorage.removeItem('qg_active_online_match');
+                            }
+                            setOnlineInfo(null);
+                            setGameState('level_select');
+                        }}
                     />
                 )}
 
