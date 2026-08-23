@@ -197,7 +197,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                     const sorted = validKeys.sort((a, b) => {
                         const tsA = parseInt(a.split('_')[1] || '0');
                         const tsB = parseInt(b.split('_')[1] || '0');
-                        return tsB - tsA; // Newest first to push ghosts to the end
+                        return tsA - tsB; // Oldest first for fair matchmaking
                     });
                     
                     for (let i = 0; i < sorted.length - 1; i += 2) {
@@ -210,12 +210,17 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             
                             // Deterministic Room ID
                             const combined = hostKey > joinerKey ? hostKey + joinerKey : joinerKey + hostKey;
-                            const roomId = Array.from(combined).reduce((acc, char) => (acc + char.charCodeAt(0)) % 1000000, 0).toString(36).toUpperCase();
+                            let hash = 5381;
+                            for (let i = 0; i < combined.length; i++) {
+                                hash = ((hash << 5) + hash + combined.charCodeAt(i)) & 0xFFFFFFFF;
+                            }
+                            const roomId = Math.abs(hash).toString(36).toUpperCase();
                             
                             const role = hostKey === myId ? 'white' : 'black';
                             const opponentId = (role === 'white' ? joinerKey : hostKey).split('_')[0];
                             
                             setMatchFound(true);
+                            channel.untrack();
                             setTimeout(() => {
                                 cancelSearch();
                                 onOnlineMatch?.(roomId, role, mode, tc, opponentId);
@@ -246,8 +251,6 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             startRandomMatch('random', tc);
         } else if (action.type === 'host' && action.roomId) {
             onOnlineMatch?.(action.roomId, 'white', 'private', tc);
-        } else if (action.type === 'join' && action.roomId) {
-            onOnlineMatch?.(action.roomId, 'black', 'private', tc);
         }
     };
 
@@ -569,7 +572,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             />
                             <button 
                                 onClick={() => {
-                                    if(joinRoomId.trim()) setPendingAction({ type: 'join', roomId: joinRoomId.trim() });
+                                    if(joinRoomId.trim()) onOnlineMatch?.(joinRoomId.trim(), 'black', 'private', '10m');
                                 }}
                                 className="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-400 rounded text-red-300 font-bold transition-colors"
                             >

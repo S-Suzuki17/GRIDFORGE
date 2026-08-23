@@ -201,8 +201,8 @@ const alphaBeta = (depth: number, alpha: number, beta: number, isMaximizingPlaye
         const nextMoves = getValidMoves(currentTokens, currentPool, currentPlayer);
         
         nextMoves.sort((a, b) => {
-            const aTarget = currentTokens.some(t => !t.isCaptured && t.row === a.targetRow && t.col === a.targetRow) ? 1 : 0;
-            const bTarget = currentTokens.some(t => !t.isCaptured && t.row === b.targetRow && t.col === b.targetRow) ? 1 : 0;
+            const aTarget = currentTokens.some(t => !t.isCaptured && t.row === a.targetRow && t.col === a.targetCol) ? 1 : 0;
+            const bTarget = currentTokens.some(t => !t.isCaptured && t.row === b.targetRow && t.col === b.targetCol) ? 1 : 0;
             return bTarget - aTarget;
         });
 
@@ -266,10 +266,12 @@ const alphaBeta = (depth: number, alpha: number, beta: number, isMaximizingPlaye
             alpha = Math.max(alpha, score);
         }
         
-        if (completed && currentBestMove) {
+        if (currentBestMove) {
             globalBestMove = currentBestMove;
-            moves.splice(moves.indexOf(currentBestMove), 1);
-            moves.unshift(currentBestMove);
+            if (completed) {
+                moves.splice(moves.indexOf(currentBestMove), 1);
+                moves.unshift(currentBestMove);
+            }
         }
         currentDepth++;
     }

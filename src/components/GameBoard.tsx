@@ -214,7 +214,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [roomId, user, tokens, onlineRole, triggerEmote, playMoveSound, currentTurn]);
+    }, [roomId, user, onlineRole, triggerEmote, playMoveSound]);
 
     // CPUターンの処理
     useEffect(() => {
@@ -241,8 +241,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                         });
                         const data = await res.json();
                         if (data.move) {
+                            const aiToken = tokens.find(t => t.id === data.move.tokenId);
+                            if (!aiToken) return;
                             executeMove(
-                                tokens.find(t => t.id === data.move.tokenId)!,
+                                aiToken,
                                 data.move.targetRow,
                                 data.move.targetCol,
                                 data.move.possibleTypes,
@@ -264,8 +266,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     const { calculateCPUMove } = await import('../lib/AIEngine');
                     const move = calculateCPUMove(cpuLevel || 1, tokens, pool, 'black');
                     if (move) {
+                        const aiToken = tokens.find(t => t.id === move.tokenId);
+                        if (!aiToken) return;
                         const targetToken = tokens.find(t => t.row === move.targetRow && t.col === move.targetCol);
-                        executeMove(tokens.find(t => t.id === move.tokenId)!, move.targetRow, move.targetCol, move.possibleTypes, targetToken, true, move.promotedTo);
+                        executeMove(aiToken, move.targetRow, move.targetCol, move.possibleTypes, targetToken, true, move.promotedTo);
                     } else {
                         setCurrentTurn('white');
                     }
@@ -408,6 +412,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     }, [selectedTokenId, tokens, winner, moveHistory]); // tokensが変わる（ターンが進む）か選択が切り替わったら再計算
 
     const executeMove = (token: Token, targetRow: number, targetCol: number, possibleTypesForMove: PieceType[], targetToken?: Token, isLocalMove: boolean = true, promotedTo?: PieceType) => {
+        if (winner) return;
         if (isLocalMove && channelRef.current) {
             channelRef.current.send({
                 type: 'broadcast',
@@ -458,8 +463,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             const newRookCol = isKingside ? targetCol - 1 : targetCol + 1;
             const rookToken = updatedTokens.find(t => t.row === token.row && t.col === rookCol && t.player === token.player);
             if (rookToken) {
-                rookToken.col = newRookCol;
-                rookToken.hasMoved = true;
+                const rookIndex = updatedTokens.findIndex(t => t.id === rookToken.id);
+                if (rookIndex !== -1) {
+                    updatedTokens[rookIndex] = { ...updatedTokens[rookIndex], col: newRookCol, hasMoved: true };
+                }
                 pool.restrictIdentity(rookToken.id, ['Rook']);
             }
         }
@@ -471,9 +478,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             const capturedCol = targetCol;
             const epToken = updatedTokens.find(t => t.row === capturedRow && t.col === capturedCol && t.player !== token.player);
             if (epToken) {
-                epToken.isCaptured = true;
-                epToken.row = -1;
-                epToken.col = -1;
+                const epIndex = updatedTokens.findIndex(t => t.id === epToken.id);
+                if (epIndex !== -1) {
+                    updatedTokens[epIndex] = { ...updatedTokens[epIndex], isCaptured: true, row: -1, col: -1 };
+                }
                 const p = pool.piecePossibilities.get(epToken.id);
                 if (p) p.delete('King');
                 pool.restrictIdentity(epToken.id, ['Pawn']);

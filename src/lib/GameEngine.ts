@@ -93,12 +93,11 @@ export function deduceMoveTypes(
             else if (dr === forwardDir * 2 && token.row === startRow) types.push('Pawn');
         } else if (absDc === 1 && dr === forwardDir && lastMove) {
             // En Passant check
-            const oppForwardDir = -forwardDir;
+            // The opponent pawn must have just moved 2 squares forward,
+            // landing on the same row as our pawn, on the target column
             if (lastMove.toRow === token.row && 
                 lastMove.toCol === targetCol &&
-                lastMove.fromRow === token.row + oppForwardDir * 2 &&
-                lastMove.toRow === lastMove.fromRow - oppForwardDir * 2) {
-                // The opponent just moved 2 squares forward, landing right next to our pawn
+                Math.abs(lastMove.fromRow - lastMove.toRow) === 2) {
                 types.push('Pawn');
             }
         }
