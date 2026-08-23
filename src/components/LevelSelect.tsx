@@ -175,7 +175,11 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                 const keys = Object.keys(state);
                 
                 if (keys.length >= 2) {
-                    const sorted = keys.sort();
+                    const sorted = keys.sort((a, b) => {
+                        const tsA = parseInt(a.split('_')[1] || '0');
+                        const tsB = parseInt(b.split('_')[1] || '0');
+                        return tsB - tsA; // Newest first to push ghosts to the end
+                    });
                     
                     for (let i = 0; i < sorted.length - 1; i += 2) {
                         const hostKey = sorted[i];
