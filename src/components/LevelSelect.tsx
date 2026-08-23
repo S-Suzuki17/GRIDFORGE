@@ -26,6 +26,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [showOnlineMenu, setShowOnlineMenu] = React.useState(false);
     const [joinRoomId, setJoinRoomId] = React.useState('');
     const [isSearching, setIsSearching] = React.useState(false);
+    const [matchFound, setMatchFound] = React.useState(false);
     const [showReplays, setShowReplays] = React.useState(false);
     const [replays, setReplays] = React.useState<GameRecord[]>([]);
     const [loadingReplays, setLoadingReplays] = React.useState(false);
@@ -196,10 +197,12 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                             const role = hostKey === myId ? 'white' : 'black';
                             const opponentId = (role === 'white' ? joinerKey : hostKey).split('_')[0];
                             
+                            setMatchFound(true);
                             setTimeout(() => {
                                 cancelSearch();
                                 onOnlineMatch?.(roomId, role, mode, tc, opponentId);
-                            }, 300);
+                                setMatchFound(false);
+                            }, 2000);
                             return;
                         }
                     }
@@ -305,26 +308,37 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             {isSearching && (
                 <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
                     <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-md w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
-                        <div className="text-4xl mb-6 animate-spin inline-block">🔍</div>
-                        <h3 className="text-2xl font-bold text-cyan-300 mb-4">
-                            {t.searchingOpponent}
-                        </h3>
-                        <p className="text-gray-400 text-sm mb-6">
-                            Waiting for another player to join the queue.
-                        </p>
-                        <div className="flex justify-center mb-6">
-                            <div className="flex gap-1">
-                                <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                        </div>
-                        <button
-                            onClick={cancelSearch}
-                            className="px-6 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-500 rounded text-red-300 font-bold transition-colors"
-                        >
-                            {t.cancel}
-                        </button>
+                        {matchFound ? (
+                            <>
+                                <div className="text-4xl mb-6 inline-block">⚔️</div>
+                                <h3 className="text-2xl font-bold text-cyan-300 mb-4 animate-pulse">
+                                    {lang === 'ja' ? 'マッチング成功！' : 'Match Found!'}
+                                </h3>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    {lang === 'ja' ? '対戦の準備をしています...' : 'Preparing the match...'}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-4xl mb-6 animate-spin inline-block">🔍</div>
+                                <h3 className="text-2xl font-bold text-cyan-300 mb-4">
+                                    {t.searchingOpponent}
+                                </h3>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    Waiting for another player to join the queue.
+                                </p>
+                                <div className="flex justify-center mb-6">
+                                    <div className="flex gap-1">
+                                        <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                                <button onClick={cancelSearch} className="px-8 py-3 bg-red-950/50 border border-red-500/50 hover:bg-red-900 text-red-300 font-bold rounded transition-all">
+                                    {t.cancel}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
