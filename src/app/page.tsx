@@ -184,10 +184,10 @@ export default function Home() {
                 )}
             </div>
 
-            {/* 広告枠 */}
+            {/* 広告 */}
             <div className="w-full max-w-4xl mt-8">
                 <AdBanner 
-                    adClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-XXXXXXXXXXXXXXXX"} 
+                    adClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-1116866075179199"} 
                     adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT || "XXXXXXXXXX"} 
                 />
             </div>

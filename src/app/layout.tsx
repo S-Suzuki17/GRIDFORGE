@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Q-GAMBIT",
   },
+  other: {
+    "google-adsense-account": "ca-pub-1116866075179199"
+  }
 };
 
 export default function RootLayout({
@@ -36,7 +39,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+  const adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-1116866075179199";
 
   return (
     <html
