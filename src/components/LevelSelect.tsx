@@ -36,8 +36,31 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
     const [userStats, setUserStats] = React.useState<UserStats | null>(null);
     const [showAccount, setShowAccount] = React.useState(false);
+    const [onlineCount, setOnlineCount] = React.useState(1);
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const globalChannelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+    React.useEffect(() => {
+        const channel = supabase.channel('global_lobby', {
+            config: { presence: { key: user.id } }
+        });
+        globalChannelRef.current = channel;
+
+        channel.on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState();
+            setOnlineCount(Object.keys(state).length);
+        });
+
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({ online_at: new Date().toISOString() });
+            }
+        });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user.id]);
     React.useEffect(() => {
         import('../lib/gameRecordService').then(({ ensureProfile }) => {
             ensureProfile(user.id, user.name).then(profile => {
@@ -305,12 +328,13 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             )}
 
             <div className="text-center mb-12">
-                <button 
+                <button
                     onClick={() => setShowAccount(true)}
-                    className="flex flex-col items-center justify-center gap-2 text-cyan-500 mb-6 hover:text-cyan-300 transition-colors group"
+                    className="flex flex-col items-center justify-center gap-1 text-cyan-500 mb-6 hover:text-cyan-300 transition-colors group"
                 >
                     <span className="text-lg font-bold">👤 {user.name}</span>
                     <span className="text-xs border border-cyan-800 px-2 py-1 rounded bg-cyan-950/30 group-hover:bg-cyan-900/50">View Account</span>
+                    <span className="text-[10px] text-green-400 mt-1 animate-pulse">● {onlineCount} Player(s) Online</span>
                 </button>
                 <h2 className="text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
                     {t.selectMode}
@@ -525,6 +549,30 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         </div>
                     </div>
                 )}
+
+                {/* ── Social ── */}
+                <div className="flex items-center justify-center gap-2 my-2 opacity-50 mt-8">
+                    <div className="h-px w-full bg-cyan-900" />
+                    <span className="text-xs uppercase tracking-widest text-cyan-600 whitespace-nowrap">Social & Live</span>
+                    <div className="h-px w-full bg-cyan-900" />
+                </div>
+
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => {}} // TODO: Show Friends
+                        className="group relative w-1/2 p-3 bg-purple-900/40 border border-purple-500/50 hover:bg-purple-800/50 transition-all rounded text-center overflow-hidden hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                        <div className="relative z-10 flex flex-col justify-center items-center gap-1">
+                            <span className="text-lg font-bold text-purple-300 tracking-wider">👥 Friends</span>
+                        </div>
+                    </button>
+                    <button 
+                        onClick={() => {}} // TODO: Show Live Matches
+                        className="group relative w-1/2 p-3 bg-red-900/40 border border-red-500/50 hover:bg-red-800/50 transition-all rounded text-center overflow-hidden hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                        <div className="relative z-10 flex flex-col justify-center items-center gap-1">
+                            <span className="text-lg font-bold text-red-300 tracking-wider">🔴 Live Matches</span>
+                        </div>
+                    </button>
+                </div>
 
                 {/* ── Replays ── */}
                 <div className="flex items-center justify-center gap-2 my-2 opacity-50 mt-8">

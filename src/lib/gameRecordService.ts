@@ -14,6 +14,22 @@ export interface MoveRecord {
     promotedTo?: PieceType;
 }
 
+export interface Friend {
+    id: string;
+    user_id: string;
+    friend_id: string;
+    status: 'pending' | 'accepted';
+    created_at: string;
+}
+
+export interface ActiveMatch {
+    room_id: string;
+    white_id: string | null;
+    black_id: string | null;
+    status: 'playing' | 'finished';
+    started_at: string;
+}
+
 export interface GameRecord {
     id?: string;
     created_at?: string;
@@ -196,4 +212,82 @@ export async function ensureProfile(id: string, name: string): Promise<Profile |
         return null;
     }
     return data;
+}
+
+// ─── Friend System ───
+
+export async function sendFriendRequest(userId: string, friendId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('friends')
+        .insert({ user_id: userId, friend_id: friendId, status: 'pending' });
+    if (error) {
+        console.error('Error sending friend request:', error);
+        return false;
+    }
+    return true;
+}
+
+export async function acceptFriendRequest(userId: string, friendId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('friends')
+        .update({ status: 'accepted' })
+        .match({ user_id: friendId, friend_id: userId, status: 'pending' });
+    
+    // Also create the reverse relationship for easy querying
+    if (!error) {
+        await supabase.from('friends').insert({ user_id: userId, friend_id: friendId, status: 'accepted' });
+        return true;
+    }
+    return false;
+}
+
+export async function removeFriend(userId: string, friendId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('friends')
+        .delete()
+        .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`);
+    return !error;
+}
+
+export async function getFriends(userId: string): Promise<Friend[]> {
+    const { data, error } = await supabase
+        .from('friends')
+        .select('*')
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+    if (error) {
+        console.error('Error fetching friends:', error);
+        return [];
+    }
+    return data || [];
+}
+
+// ─── Active Matches (Spectator) ───
+
+export async function registerActiveMatch(roomId: string, whiteId: string | null, blackId: string | null): Promise<void> {
+    await supabase.from('active_matches').upsert({
+        room_id: roomId,
+        white_id: whiteId,
+        black_id: blackId,
+        status: 'playing',
+        started_at: new Date().toISOString()
+    });
+}
+
+export async function finishActiveMatch(roomId: string): Promise<void> {
+    await supabase.from('active_matches')
+        .update({ status: 'finished' })
+        .eq('room_id', roomId);
+}
+
+export async function getActiveMatches(): Promise<ActiveMatch[]> {
+    const { data, error } = await supabase
+        .from('active_matches')
+        .select('*')
+        .eq('status', 'playing')
+        .order('started_at', { ascending: false });
+    if (error) {
+        console.error('Error fetching active matches:', error);
+        return [];
+    }
+    return data || [];
 }
