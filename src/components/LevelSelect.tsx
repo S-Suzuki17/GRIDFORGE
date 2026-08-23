@@ -32,6 +32,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl | 'all'>('all');
     const [pendingAction, setPendingAction] = React.useState<{ type: 'cpu' | 'ranked' | 'random' | 'host' | 'join'; level?: number; roomId?: string } | null>(null);
     const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
+    const [showAccount, setShowAccount] = React.useState(false);
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     React.useEffect(() => {
@@ -277,19 +278,69 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             )}
 
             <div className="text-center mb-12">
-                <p className="text-cyan-500 mb-2">Welcome, Agent {user.name} [{user.id}]</p>
-                {userProfile && (
-                    <div className="flex justify-center gap-4 text-xs font-mono text-cyan-400/80 mb-4 bg-cyan-950/30 py-2 px-4 rounded border border-cyan-900/50 inline-flex">
-                        <span>10s: {Math.floor(userProfile.rating_10s)}</span>
-                        <span>3m: {Math.floor(userProfile.rating_3m)}</span>
-                        <span>10m: {Math.floor(userProfile.rating_10m)}</span>
-                    </div>
-                )}
+                <button 
+                    onClick={() => setShowAccount(true)}
+                    className="flex flex-col items-center justify-center gap-2 text-cyan-500 mb-6 hover:text-cyan-300 transition-colors group"
+                >
+                    <span className="text-lg font-bold">👤 {user.name}</span>
+                    <span className="text-xs border border-cyan-800 px-2 py-1 rounded bg-cyan-950/30 group-hover:bg-cyan-900/50">View Account</span>
+                </button>
                 <h2 className="text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
                     {t.selectMode}
                 </h2>
             </div>
 
+            {/* Account Modal */}
+            {showAccount && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-gray-900 border border-cyan-500/30 p-8 rounded-lg max-w-sm w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                        <h3 className="text-2xl font-bold text-cyan-300 mb-6">👤 ACCOUNT</h3>
+                        
+                        <div className="flex flex-col gap-4 text-left mb-8">
+                            <div>
+                                <p className="text-xs text-cyan-600 font-bold mb-1">NAME</p>
+                                <p className="text-lg text-white font-bold">{user.name}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-cyan-600 font-bold mb-1">ID (Keep Secret)</p>
+                                <p className="text-sm text-gray-300 font-mono bg-black p-2 rounded border border-gray-800 break-all select-all">{user.id}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-cyan-600 font-bold mb-1">RATINGS</p>
+                                <div className="bg-black border border-cyan-900/50 rounded p-3 flex justify-between">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-gray-500 mb-1">10 SEC</span>
+                                        <span className="font-mono text-cyan-400 font-bold">{userProfile ? Math.floor(userProfile.rating_10s) : '---'}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-gray-500 mb-1">3 MIN</span>
+                                        <span className="font-mono text-cyan-400 font-bold">{userProfile ? Math.floor(userProfile.rating_3m) : '---'}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-gray-500 mb-1">10 MIN</span>
+                                        <span className="font-mono text-cyan-400 font-bold">{userProfile ? Math.floor(userProfile.rating_10m) : '---'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={onBack}
+                                className="flex-1 py-2 bg-red-900/30 border border-red-500/50 hover:bg-red-800/50 rounded text-red-400 font-bold transition-colors"
+                            >
+                                {t.logout}
+                            </button>
+                            <button
+                                onClick={() => setShowAccount(false)}
+                                className="flex-1 py-2 bg-cyan-900/30 border border-cyan-500/50 hover:bg-cyan-800/50 rounded text-cyan-400 font-bold transition-colors"
+                            >
+                                CLOSE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="w-full max-w-md flex flex-col gap-4 mt-8">
                 {/* VS CPU */}
                 <button 
@@ -515,11 +566,6 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         )}
                     </div>
                 )}
-            </div>
-
-            <button onClick={onBack} className="mt-12 text-cyan-600 hover:text-cyan-400">
-                {t.logout}
-            </button>
         </div>
     );
 }
