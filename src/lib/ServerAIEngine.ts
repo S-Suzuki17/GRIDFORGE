@@ -50,6 +50,16 @@ export function calculateDeepMove(level: number, tokens: Token[], pool: Identity
         if (token && possibilities) {
             const moveTypes = deduceMoveTypes(token, bestMove.targetRow, bestMove.targetCol, tokens);
             bestMove.possibleTypes = moveTypes.filter(mt => possibilities.has(mt));
+            
+            // Auto-promote CPU pawns to Queen
+            const isBackRank = (token.player === 'white' && bestMove.targetRow === 0) || (token.player === 'black' && bestMove.targetRow === 7);
+            if (isBackRank && bestMove.possibleTypes.includes('Pawn') && !token.promotedTo) {
+                // To avoid collapsing non-pawns unnecessarily, we only auto-promote if the ONLY valid move type was Pawn, 
+                // OR if it's a highly likely pawn move. But to keep it simple and powerful, if it CAN be a pawn, make it a Queen.
+                // Wait, if it could be a Queen already, promoting to Queen is fine.
+                bestMove.promotedTo = 'Queen';
+                bestMove.possibleTypes = ['Pawn']; // Force collapse to Pawn
+            }
         }
         return bestMove;
     }
@@ -67,7 +77,12 @@ export function calculateDeepMove(level: number, tokens: Token[], pool: Identity
                 const moveTypes = deduceMoveTypes(token, r, c, tokens);
                 const validTypesForMove = moveTypes.filter(mt => possibilities.has(mt));
                 if (validTypesForMove.length > 0) {
-                    validMoves.push({ tokenId: token.id, targetRow: r, targetCol: c, possibleTypes: validTypesForMove });
+                    const isBackRank = (token.player === 'white' && r === 0) || (token.player === 'black' && r === 7);
+                    if (isBackRank && validTypesForMove.includes('Pawn') && !token.promotedTo) {
+                        validMoves.push({ tokenId: token.id, targetRow: r, targetCol: c, possibleTypes: ['Pawn'], promotedTo: 'Queen' });
+                    } else {
+                        validMoves.push({ tokenId: token.id, targetRow: r, targetCol: c, possibleTypes: validTypesForMove });
+                    }
                 }
             }
         }
