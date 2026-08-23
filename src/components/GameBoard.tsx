@@ -12,6 +12,15 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { MoveRecord, saveGameRecord, GameRecord } from '../lib/gameRecordService';
 import { soundManager } from '../lib/SoundService';
 
+export type EmoteType = 'hello' | 'well_played' | 'wow' | 'thinking' | 'resign';
+export const EMOTES: Record<EmoteType, { emoji: string; labelJa: string; labelEn: string }> = {
+    hello: { emoji: '👋', labelJa: 'よろしく！', labelEn: 'Hello!' },
+    well_played: { emoji: '👏', labelJa: 'ナイス！', labelEn: 'Well played' },
+    wow: { emoji: '😲', labelJa: 'えっ！？', labelEn: 'Wow' },
+    thinking: { emoji: '🤔', labelJa: 'うーん', labelEn: 'Thinking...' },
+    resign: { emoji: '🙏', labelJa: '参りました', labelEn: 'Good game' }
+};
+
 interface GameBoardProps {
     lang: Language;
     user?: User;
@@ -73,6 +82,32 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [turnCount, setTurnCount] = useState(0);
     const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
+    // Emote states
+    const [showEmoteMenu, setShowEmoteMenu] = useState(false);
+    const [activeEmotes, setActiveEmotes] = useState<{ white: EmoteType | null, black: EmoteType | null }>({ white: null, black: null });
+    const emoteTimers = useRef<{ white: NodeJS.Timeout | null, black: NodeJS.Timeout | null }>({ white: null, black: null });
+
+    const triggerEmote = useCallback((player: 'white' | 'black', emote: EmoteType) => {
+        setActiveEmotes(prev => ({ ...prev, [player]: emote }));
+        if (emoteTimers.current[player]) clearTimeout(emoteTimers.current[player]!);
+        emoteTimers.current[player] = setTimeout(() => {
+            setActiveEmotes(prev => ({ ...prev, [player]: null }));
+        }, 3000);
+    }, []);
+
+    const sendEmote = useCallback((emote: EmoteType) => {
+        if (!roomId || !onlineRole) return;
+        if (channelRef.current) {
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'game_action',
+                payload: { type: 'emote', emote, player: onlineRole }
+            });
+        }
+        triggerEmote(onlineRole, emote);
+        setShowEmoteMenu(false);
+    }, [roomId, onlineRole, triggerEmote]);
+
     // 駒音（spo_ge_syogi04.mp3 を使用）
     const moveSoundRef = useRef<HTMLAudioElement | null>(null);
     
@@ -109,6 +144,13 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     executeMoveRef.current?.(sourceToken, payload.targetRow, payload.targetCol, payload.possibleTypes, targetToken, false);
                 }
             })
+            .on('broadcast', { event: 'game_action' }, ({ payload }) => {
+                if (payload.type === 'emote') {
+                    // Using a small delay or directly triggering
+                    triggerEmote(payload.player, payload.emote);
+                    soundManager.play('move');
+                }
+            })
             .subscribe((status) => {
                 console.log(`Supabase Channel Status [${roomId}]:`, status);
             });
@@ -116,7 +158,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [roomId, user, tokens]);
+    }, [roomId, user, tokens, onlineRole, triggerEmote]);
 
     // CPUターンの処理
     useEffect(() => {
@@ -488,9 +530,9 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    const playerName = user?.name || 'Player';
-    const opponentName = roomId ? 'Opponent' : `CPU`;
     const myRole = onlineRole || 'white';
+    const whiteName = myRole === 'white' ? (user?.name || 'Player') : (roomId ? 'Opponent' : 'CPU');
+    const blackName = myRole === 'black' ? (user?.name || 'Player') : (roomId ? 'Opponent' : 'CPU');
 
     return (
         <div className="flex flex-col items-center w-full max-w-[800px] relative">
@@ -513,17 +555,28 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 </div>
             )}
 
-            <div className="flex justify-between w-full mb-4 px-4 items-center bg-gray-900/40 py-2 border-b border-cyan-900/50">
-                <div className={`text-xl font-bold flex flex-col items-start gap-1 ${currentTurn === 'white' ? 'text-blue-400 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
+            <div className="flex justify-between w-full mb-4 px-4 items-center bg-gray-900/40 py-2 border-b border-cyan-900/50 relative">
+                {/* White Player Info */}
+                <div className={`text-xl font-bold flex flex-col items-start gap-1 ${currentTurn === 'white' ? 'text-blue-400 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'} relative`}>
                     <div className="flex items-center gap-2">
-                        🟦 {playerName}
+                        🟦 {whiteName}
+                        {isCheck && currentTurn === 'white' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
                     </div>
                     <span className="text-2xl font-mono">{formatTime(timeLeftWhite)}</span>
+                    {/* White Emote */}
+                    {activeEmotes.white && (
+                        <div className="absolute top-10 left-0 bg-white border-2 border-blue-500 rounded-2xl rounded-tl-none px-3 py-1 shadow-lg z-50 animate-bounce">
+                            <span className="text-2xl">{EMOTES[activeEmotes.white].emoji}</span>
+                        </div>
+                    )}
                 </div>
+
                 <div className="text-sm font-bold text-red-500 min-h-[20px] mx-4 text-center">
                     {errorMsg}
                 </div>
-                <div className={`text-xl font-bold flex flex-col items-end gap-1 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'}`}>
+
+                {/* Black Player Info */}
+                <div className={`text-xl font-bold flex flex-col items-end gap-1 ${currentTurn === 'black' ? 'text-red-500 drop-shadow-[0_0_5px_currentColor]' : 'text-gray-500'} relative`}>
                     <div className="flex items-center gap-2">
                         {isCheck && currentTurn === 'black' && <span className="text-red-500 text-sm animate-pulse">(CHECK)</span>}
                         {opponentName} 🟥
@@ -666,6 +719,33 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             <div className="mt-4 text-[#00ff41] text-sm opacity-80 text-center px-4">
                 {t.tips}
             </div>
+
+            {/* Emote Button & Menu */}
+            {roomId && onlineRole && !winner && (
+                <div className="fixed bottom-4 right-4 z-40">
+                    <button
+                        onClick={() => setShowEmoteMenu(prev => !prev)}
+                        className="w-14 h-14 bg-indigo-900 border-2 border-indigo-500 rounded-full flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(99,102,241,0.5)] hover:scale-110 transition-transform"
+                    >
+                        💬
+                    </button>
+                    {showEmoteMenu && (
+                        <div className="absolute bottom-16 right-0 bg-gray-900 border border-indigo-500 rounded-xl p-2 flex flex-col gap-2 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                            {(Object.keys(EMOTES) as EmoteType[]).map(key => (
+                                <button
+                                    key={key}
+                                    onClick={() => sendEmote(key)}
+                                    className="flex items-center gap-3 px-4 py-2 hover:bg-indigo-900/50 rounded transition-colors whitespace-nowrap text-left"
+                                >
+                                    <span className="text-2xl">{EMOTES[key].emoji}</span>
+                                    <span className="text-gray-300 text-sm font-bold">{lang === 'ja' ? EMOTES[key].labelJa : EMOTES[key].labelEn}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {promotionPending && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
                     <div className="bg-gray-900 border-2 border-cyan-500/50 p-6 rounded-lg max-w-sm w-full text-center">
