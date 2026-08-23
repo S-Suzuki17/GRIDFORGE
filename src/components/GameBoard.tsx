@@ -55,14 +55,16 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             // Fetch my rating
             if (user?.id && !user.id.startsWith('GUEST-') && matchMode === 'ranked') {
                 supabase.from('profiles').select(ratingCol).eq('id', user.id).single().then(({ data }) => {
-                    if (data && data[ratingCol]) setMyRating(data[ratingCol]);
+                    const d = data as any;
+                    if (d && d[ratingCol]) setMyRating(d[ratingCol]);
                 });
             }
             // Fetch opponent name & rating
             if (opponentId && !opponentId.startsWith('GUEST-')) {
                 supabase.from('profiles').select(`name, ${ratingCol}`).eq('id', opponentId).single().then(({ data }) => {
-                    if (data?.name) setFetchedOpponentName(data.name);
-                    if (data && data[ratingCol] && matchMode === 'ranked') setOpponentRating(data[ratingCol]);
+                    const d = data as any;
+                    if (d?.name) setFetchedOpponentName(d.name);
+                    if (d && d[ratingCol] && matchMode === 'ranked') setOpponentRating(d[ratingCol]);
                 });
             }
         });

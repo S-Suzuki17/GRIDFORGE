@@ -33,7 +33,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [showLeaderboard, setShowLeaderboard] = React.useState(false);
     const [leaderboard, setLeaderboard] = React.useState<Profile[]>([]);
     const [loadingLeaderboard, setLoadingLeaderboard] = React.useState(false);
-    const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl | 'all'>('all');
+    const [leaderboardCategory, setLeaderboardCategory] = React.useState<TimeControl>('10m');
     const [pendingAction, setPendingAction] = React.useState<{ type: 'cpu' | 'ranked' | 'random' | 'host' | 'join'; level?: number; roomId?: string } | null>(null);
     const [userProfile, setUserProfile] = React.useState<Profile | null>(null);
     const [userStats, setUserStats] = React.useState<UserStats | null>(null);
@@ -91,14 +91,14 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         }
     }, [isSearching]);
 
-    const loadLeaderboard = async (category: TimeControl | 'all' = leaderboardCategory) => {
+    const loadLeaderboard = async (category: TimeControl = leaderboardCategory) => {
         setLoadingLeaderboard(true);
-        const data = await getTopProfiles(category === 'all' ? undefined : category);
+        const data = await getTopProfiles(category);
         setLeaderboard(data);
         setLoadingLeaderboard(false);
     };
 
-    const handleCategoryChange = (category: TimeControl | 'all') => {
+    const handleCategoryChange = (category: TimeControl) => {
         setLeaderboardCategory(category);
         loadLeaderboard(category);
     };
@@ -686,14 +686,13 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         {/* Category Tabs */}
                         <div className="flex gap-1 p-1 bg-black/40 border border-fuchsia-900/50 rounded">
                             {[
-                                { id: 'all', label: t.lbOverall },
                                 { id: '10s', label: t.lb10s },
                                 { id: '3m', label: t.lb3m },
                                 { id: '10m', label: t.lb10m },
                             ].map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => handleCategoryChange(tab.id as TimeControl | 'all')}
+                                    onClick={() => handleCategoryChange(tab.id as TimeControl)}
                                     className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
                                         leaderboardCategory === tab.id
                                             ? 'bg-fuchsia-600 text-white shadow-[0_0_10px_rgba(217,70,239,0.5)]'
@@ -712,10 +711,9 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         ) : (
                             <div className="flex flex-col gap-2">
                                 {leaderboard.map((p, index) => {
-                                    const ratingVal = leaderboardCategory === '10s' ? (p.rating_10s ?? p.rating ?? 2000)
-                                                    : leaderboardCategory === '3m' ? (p.rating_3m ?? p.rating ?? 2000)
-                                                    : leaderboardCategory === '10m' ? (p.rating_10m ?? p.rating ?? 2000)
-                                                    : (p.rating ?? 2000);
+                                    const ratingVal = leaderboardCategory === '10s' ? (p.rating_10s ?? 2000)
+                                                    : leaderboardCategory === '3m' ? (p.rating_3m ?? 2000)
+                                                    : (p.rating_10m ?? 2000);
                                     return (
                                         <div 
                                             key={p.id}

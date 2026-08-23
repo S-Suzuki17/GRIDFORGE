@@ -176,8 +176,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
 export async function getTopProfiles(timeControl?: string): Promise<Profile[]> {
     const ratingColumn = timeControl === '10s' ? 'rating_10s' 
                        : timeControl === '3m' ? 'rating_3m' 
-                       : timeControl === '10m' ? 'rating_10m'
-                       : 'rating';
+                       : 'rating_10m';
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
