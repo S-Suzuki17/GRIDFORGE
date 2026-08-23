@@ -280,7 +280,12 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
 
                 // そのマスへの移動が、残された可能性（アイデンティティ）と合致するか
                 const possibleTypes = deduceMoveTypes(token, r, c, tokens, lastMoveObj);
-                if (possibleTypes.some(type => currentPossibilities.has(type))) {
+                if (token.promotedTo) {
+                    // プロモーション済み駒は promotedTo の動きだけ許可（プールのPawn制約を無視）
+                    if (possibleTypes.includes(token.promotedTo)) {
+                        moves.push({r, c});
+                    }
+                } else if (possibleTypes.some(type => currentPossibilities.has(type))) {
                     moves.push({r, c});
                 }
             }
@@ -439,7 +444,10 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             } : undefined;
 
             const possibleTypesForMove = deduceMoveTypes(token, targetRow, targetCol, tokens, lastMoveObj);
-            const validTypesForMove = possibleTypesForMove.filter(mt => currentPossibilities.has(mt));
+            // プロモーション済み駒はプールのPawn制約を無視し、promotedToの動きだけ許可
+            const validTypesForMove = token.promotedTo
+                ? possibleTypesForMove.filter(mt => mt === token.promotedTo)
+                : possibleTypesForMove.filter(mt => currentPossibilities.has(mt));
 
             if (validTypesForMove.length === 0) {
                 setErrorMsg(t.errIdentity);
@@ -447,7 +455,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                 return;
             }
 
-            if ((targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
+            // プロモーション済みの駒が最終ランクに再度移動しても、再プロモーションはしない
+            if (!token.promotedTo && (targetRow === 0 || targetRow === 7) && validTypesForMove.includes('Pawn')) {
                 setPromotionPending({
                     token,
                     targetRow,
