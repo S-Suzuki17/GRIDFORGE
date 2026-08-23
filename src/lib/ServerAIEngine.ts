@@ -107,7 +107,7 @@ function applyMoveAndResolve(tokens: Token[], pool: IdentityPool, move: AIMove) 
     clonedPool.restrictIdentity(move.tokenId, move.possibleTypes);
     const targetToken = tokens.find(t => !t.isCaptured && t.row === move.targetRow && t.col === move.targetCol);
     
-    const simTokens = tokens.map(t => {
+    let simTokens = tokens.map(t => {
         if (t.id === move.tokenId) return { ...t, row: move.targetRow, col: move.targetCol, promotedTo: move.promotedTo || t.promotedTo };
         if (t.id === targetToken?.id) {
             const p = clonedPool.piecePossibilities.get(t.id);
@@ -116,6 +116,21 @@ function applyMoveAndResolve(tokens: Token[], pool: IdentityPool, move: AIMove) 
         }
         return t;
     });
+
+    // En Passant capture: if pawn moves diagonally to empty square, capture the pawn behind
+    if (!targetToken && move.possibleTypes.includes('Pawn')) {
+        const movingToken = tokens.find(t => t.id === move.tokenId);
+        if (movingToken) {
+            const dc = Math.abs(move.targetCol - movingToken.col);
+            if (dc === 1) {
+                // Diagonal pawn move to empty square = en passant
+                const epTarget = simTokens.find(t => !t.isCaptured && t.row === movingToken.row && t.col === move.targetCol && t.player !== movingToken.player);
+                if (epTarget) {
+                    simTokens = simTokens.map(t => t.id === epTarget.id ? { ...t, isCaptured: true, row: -1, col: -1 } : t);
+                }
+            }
+        }
+    }
     
     return { nextTokens: simTokens, nextPool: clonedPool };
 }

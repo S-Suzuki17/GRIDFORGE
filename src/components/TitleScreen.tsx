@@ -38,7 +38,7 @@ export function TitleScreen({ lang, onLogin }: TitleScreenProps) {
         // ランダムなIDを生成 (例: QG-8X9A)
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let idStr = 'QG-';
-        for(let i = 0; i < 4; i++) {
+        for(let i = 0; i < 6; i++) {
             idStr += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 

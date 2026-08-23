@@ -71,7 +71,7 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     }, [opponentId, user?.id, timeControl, matchMode]);
     const [isCheck, setIsCheck] = useState<boolean>(false);
     const [showCheckWarning, setShowCheckWarning] = useState<boolean>(false);
-    const [winner, setWinner] = useState<'white_wins' | 'black_wins' | null>(null);
+    const [winner, setWinner] = useState<'white_wins' | 'black_wins' | 'draw' | null>(null);
 
     const initialTime = timeControl === '10s' ? 10 : timeControl === '3m' ? 180 : 600;
     const [timeLeftWhite, setTimeLeftWhite] = useState<number>(initialTime);
@@ -326,6 +326,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             const saveRecord = async () => {
                 const mode = matchMode || 'cpu';
                 
+                if (user?.id?.startsWith('GUEST-')) return; // Don't save records for guests
+                
                 // If it's an online match, we need to know the IDs. Since we don't have opponent ID easily here without changing more,
                 // we'll just save our own ID in the correct slot, and wait... no, both clients will trigger this useEffect.
                 // To avoid duplicate saving, maybe only White saves the record in online matches?
@@ -512,6 +514,11 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     if (mate) {
                         setWinner(currentTurn === 'white' ? 'white_wins' : 'black_wins');
                     }
+                } else {
+                    // Stalemate detection
+                    if (isCheckmate(nextTurn, activeTokens, pool)) {
+                        setWinner('draw');
+                    }
                 }
             }
         }
@@ -686,12 +693,14 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
             {winner && (
                 <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-50 backdrop-blur-sm rounded-lg border border-gray-800">
                     <div className="text-6xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] mb-8 tracking-widest">
-                        CHECKMATE
+                        {winner === 'draw' ? 'DRAW' : 'CHECKMATE'}
                     </div>
-                    <div className={`text-4xl font-bold mb-12 ${winner === 'white_wins' ? 'text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.8)]' : 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]'}`}>
-                        {winner === 'white_wins' 
-                            ? `${whiteName} (${t.whiteWon})` 
-                            : `${blackName} (${t.blackWon})`}
+                    <div className={`text-4xl font-bold mb-12 ${winner === 'draw' ? 'text-gray-400 drop-shadow-[0_0_15px_rgba(156,163,175,0.8)]' : winner === 'white_wins' ? 'text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.8)]' : 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]'}`}>
+                        {winner === 'draw' 
+                            ? 'Draw (Stalemate)' 
+                            : winner === 'white_wins' 
+                                ? `${whiteName} (${t.whiteWon})` 
+                                : `${blackName} (${t.blackWon})`}
                     </div>
                     <div className="flex gap-4 mt-8">
                         <button 

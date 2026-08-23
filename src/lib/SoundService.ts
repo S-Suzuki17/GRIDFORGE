@@ -8,6 +8,7 @@ export class SoundService {
     private bgmAudio: HTMLAudioElement | null = null;
     private currentTrack: string | null = null;
     private listeners: Set<(config: SoundConfig) => void> = new Set();
+    private playPromise: Promise<void> | undefined;
     
     private config: SoundConfig = {
         bgmVolume: 0.5,
@@ -39,9 +40,16 @@ export class SoundService {
         if (this.bgmAudio) {
             this.bgmAudio.volume = this.config.bgmVolume;
             if (this.config.masterMute || this.config.bgmVolume === 0) {
-                this.bgmAudio.pause();
+                if (this.playPromise !== undefined) {
+                    this.playPromise.then(() => {
+                        this.bgmAudio?.pause();
+                    }).catch(() => {});
+                } else {
+                    this.bgmAudio.pause();
+                }
             } else if (this.bgmAudio.paused) {
-                this.bgmAudio.play().catch(() => {});
+                this.playPromise = this.bgmAudio.play();
+                this.playPromise.catch(() => {});
             }
         }
 
@@ -63,7 +71,8 @@ export class SoundService {
 
         if (this.currentTrack === trackUrl && this.bgmAudio) {
             if (!this.config.masterMute && this.config.bgmVolume > 0 && this.bgmAudio.paused) {
-                this.bgmAudio.play().catch(e => console.log(e));
+                this.playPromise = this.bgmAudio.play();
+                this.playPromise.catch(e => console.log(e));
             }
             return;
         }
@@ -76,14 +85,23 @@ export class SoundService {
         this.bgmAudio.volume = this.config.bgmVolume;
         
         if (!this.config.masterMute && this.config.bgmVolume > 0) {
-            this.bgmAudio.play().catch(e => console.log('Audio play failed:', e));
+            this.playPromise = this.bgmAudio.play();
+            this.playPromise.catch(e => console.log('Audio play failed:', e));
         }
     }
 
     public stopBGM() {
         if (this.bgmAudio) {
-            this.bgmAudio.pause();
-            this.bgmAudio.currentTime = 0;
+            const audio = this.bgmAudio;
+            if (this.playPromise !== undefined) {
+                this.playPromise.then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }).catch(() => {});
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+            }
             this.bgmAudio = null;
         }
         this.currentTrack = null;

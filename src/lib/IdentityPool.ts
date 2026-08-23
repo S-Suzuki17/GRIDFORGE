@@ -120,6 +120,20 @@ export class IdentityPool {
                 }
             }
         }
+        
+        // Verify each player still has at least one potential King
+        const whitePieces = tokens.filter(t => t.player === 'white' && !t.isCaptured);
+        const blackPieces = tokens.filter(t => t.player === 'black' && !t.isCaptured);
+        const whiteHasKing = whitePieces.some(t => {
+            const p = this.piecePossibilities.get(t.id);
+            return p && p.has('King');
+        });
+        const blackHasKing = blackPieces.some(t => {
+            const p = this.piecePossibilities.get(t.id);
+            return p && p.has('King');
+        });
+        if (!whiteHasKing || !blackHasKing) return false;
+
         return true;
     }
 

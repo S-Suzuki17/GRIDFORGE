@@ -45,6 +45,7 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const [onlineUsers, setOnlineUsers] = React.useState<Set<string>>(new Set());
     const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
     const globalChannelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const adIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
     React.useEffect(() => {
         const channel = supabase.channel('global_lobby', {
@@ -120,10 +121,11 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
         setShowAdModal(true);
         setAdProgress(0);
         
-        const interval = setInterval(() => {
+        if (adIntervalRef.current) clearInterval(adIntervalRef.current);
+        adIntervalRef.current = setInterval(() => {
             setAdProgress(prev => {
                 if (prev >= 100) {
-                    clearInterval(interval);
+                    if (adIntervalRef.current) clearInterval(adIntervalRef.current);
                     return 100;
                 }
                 return prev + 2;
@@ -134,6 +136,12 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
     const handleAdFinish = () => {
         setPendingAction({ type: 'cpu', level: 5 });
         setShowAdModal(false);
+        if (adIntervalRef.current) clearInterval(adIntervalRef.current);
+    };
+
+    const handleAdCancel = () => {
+        setShowAdModal(false);
+        if (adIntervalRef.current) clearInterval(adIntervalRef.current);
     };
 
     const cancelSearch = React.useCallback(() => {
@@ -260,6 +268,9 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
             if (channelRef.current) {
                 supabase.removeChannel(channelRef.current);
             }
+            if (adIntervalRef.current) {
+                clearInterval(adIntervalRef.current);
+            }
         };
     }, []);
 
@@ -312,7 +323,15 @@ export function LevelSelect({ lang, user, onSelect, onOnlineMatch, onReplay, onB
                         </div>
 
                         {adProgress < 100 ? (
-                            <p className="text-cyan-500 animate-pulse text-sm font-mono">Simulating Ad... {adProgress}%</p>
+                            <div className="flex flex-col gap-4 w-full">
+                                <p className="text-cyan-500 animate-pulse text-sm font-mono">Simulating Ad... {adProgress}%</p>
+                                <button 
+                                    onClick={handleAdCancel}
+                                    className="w-full py-3 bg-red-900/50 hover:bg-red-800/50 border border-red-500/50 text-red-300 font-bold rounded transition-colors"
+                                >
+                                    {t.cancel}
+                                </button>
+                            </div>
                         ) : (
                             <button 
                                 onClick={handleAdFinish}
