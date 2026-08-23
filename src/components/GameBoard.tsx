@@ -72,6 +72,8 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     const [isCheck, setIsCheck] = useState<boolean>(false);
     const [showCheckWarning, setShowCheckWarning] = useState<boolean>(false);
     const [winner, setWinner] = useState<'white_wins' | 'black_wins' | 'draw' | null>(null);
+    const [disconnectTimeLeft, setDisconnectTimeLeft] = useState<number | null>(null);
+    const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const initialTime = timeControl === '10s' ? 10 : timeControl === '3m' ? 180 : 600;
     const [timeLeftWhite, setTimeLeftWhite] = useState<number>(initialTime);
@@ -161,10 +163,41 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
     useEffect(() => {
         if (!roomId || !user) return;
         
-        const channel = supabase.channel(`room_${roomId}`);
+        const channel = supabase.channel(`room_${roomId}`, {
+            config: { presence: { key: user.id } }
+        });
         channelRef.current = channel;
 
         channel
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState();
+                const keys = Object.keys(state).map(k => k.split('_')[0]); // Extract base user.id from presence keys
+                
+                // Disconnect check (if opponentId is set and we're not a spectator)
+                if (opponentId && onlineRole !== 'spectator') {
+                    if (!keys.includes(opponentId)) {
+                        if (!disconnectTimerRef.current) {
+                            let timeLeft = 120;
+                            setDisconnectTimeLeft(timeLeft);
+                            disconnectTimerRef.current = setInterval(() => {
+                                timeLeft--;
+                                setDisconnectTimeLeft(timeLeft);
+                                if (timeLeft <= 0) {
+                                    if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
+                                    disconnectTimerRef.current = null;
+                                    setWinner(onlineRole === 'white' ? 'white_wins' : 'black_wins');
+                                }
+                            }, 1000);
+                        }
+                    } else {
+                        if (disconnectTimerRef.current) {
+                            clearInterval(disconnectTimerRef.current);
+                            disconnectTimerRef.current = null;
+                            setDisconnectTimeLeft(null);
+                        }
+                    }
+                }
+            })
             .on('broadcast', { event: 'move' }, ({ payload }) => {
                 if (user && payload.userId === user.id) return; // ignore own move (already applied locally)
                 
@@ -205,16 +238,20 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                     setTurnCount(payload.moveHistory.length);
                 }
             })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED' && onlineRole === 'spectator') {
-                    channel.send({ type: 'broadcast', event: 'request_sync' });
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    if (onlineRole === 'spectator') {
+                        channel.send({ type: 'broadcast', event: 'request_sync' });
+                    }
+                    await channel.track({ online_at: new Date().toISOString() });
                 }
             });
 
         return () => {
+            if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
             supabase.removeChannel(channel);
         };
-    }, [roomId, user, onlineRole, triggerEmote, playMoveSound]);
+    }, [roomId, user, onlineRole, triggerEmote, playMoveSound, opponentId]);
 
     // CPUターンの処理
     useEffect(() => {
@@ -644,6 +681,17 @@ export default function GameBoard({ lang, user, cpuLevel, roomId, onlineRole, ma
                             {onlineRole === 'spectator' ? '👁 SPECTATING' : (myRole === 'white' ? 'YOU: 🟦 WHITE' : 'YOU: 🟥 BLACK')}
                         </span>
                     </div>
+                </div>
+            )}
+
+            {disconnectTimeLeft !== null && (
+                <div className="w-full mb-3 p-3 bg-red-950/80 border border-red-500 rounded-lg flex flex-col items-center justify-center animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                    <span className="text-red-400 font-bold text-sm md:text-base">
+                        {lang === 'ja' ? '⚠️ 相手の通信が切断されました。再接続を待っています...' : '⚠️ Opponent disconnected. Waiting for reconnection...'}
+                    </span>
+                    <span className="text-red-300 font-mono text-xl mt-1 font-black">
+                        {Math.floor(disconnectTimeLeft / 60)}:{(disconnectTimeLeft % 60).toString().padStart(2, '0')}
+                    </span>
                 </div>
             )}
 
