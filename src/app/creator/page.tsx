@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '../../hooks/useGameStore';
 import { CreatureStats, calculateTotalCost, calculateStatCost } from '../../types/game';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, ChevronRight, Hash } from 'lucide-react';
 import Link from 'next/link';
+import { Toast } from '../../components/Toast';
 
 const appearances = ['👾', '👻', '🤖', '👺', '👽', '🐉', '🦖', '🦇', '🦋', '🦂'];
 const MAX_COST = 600;
@@ -13,6 +14,13 @@ const MAX_COST = 600;
 export default function CreatorPage() {
   const router = useRouter();
   const { addCreature, isLoaded } = useGameStore();
+
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+  }, []);
 
   const [name, setName] = useState('');
   const [appearance, setAppearance] = useState(appearances[0]);
@@ -77,7 +85,7 @@ export default function CreatorPage() {
 
   const handleSave = () => {
     if (!name.trim()) {
-      alert('名前を入力してください');
+      showToast('名前を入力してください');
       return;
     }
     addCreature({
@@ -86,13 +94,14 @@ export default function CreatorPage() {
       cost: currentCost,
       stats,
     });
-    alert(`保存しました！ (コスト: ${currentCost}pt)`);
+    showToast(`保存しました！ (コスト: ${currentCost}pt)`);
     router.push('/');
   };
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 bg-amber-50">
-      <div className="flex items-center justify-between mb-6 pt-4">
+    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 md:p-6 bg-amber-50 relative">
+      <Toast message={toastMsg} isVisible={toastVisible} onClose={() => setToastVisible(false)} />
+      <div className="flex items-center justify-between mb-8">
         <Link href="/" className="p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-slate-400 hover:shadow-md transition-all">
           <ArrowLeft className="w-6 h-6 text-slate-700" />
         </Link>

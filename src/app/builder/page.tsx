@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useGameStore } from '../../hooks/useGameStore';
 import { ArrowLeft, Plus, Trash2, Save, Check } from 'lucide-react';
 import { Creature } from '../../types/game';
+import { Toast } from '../../components/Toast';
 
 const MAX_TEAM_COST = 600;
 
@@ -14,6 +15,13 @@ export default function BuilderPage() {
   const [selectedTeam, setSelectedTeam] = useState<(Creature | null)[]>(Array(5).fill(null));
   
   const [teamName, setTeamName] = useState('マイチーム');
+
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+  }, []);
 
   const handleSizeChange = (size: number) => {
     setTeamSize(size);
@@ -30,7 +38,7 @@ export default function BuilderPage() {
 
   const handleSelectSlot = (creature: Creature) => {
     if (currentTeamCost + creature.cost > MAX_TEAM_COST) {
-      alert(`コストオーバーです！（最大${MAX_TEAM_COST}pt）`);
+      showToast(`コストオーバーです！（最大${MAX_TEAM_COST}pt）`);
       return;
     }
     const emptySlot = selectedTeam.findIndex((m, idx) => m === null && idx < teamSize);
@@ -41,7 +49,7 @@ export default function BuilderPage() {
         return newTeam;
       });
     } else {
-      alert('編成枠がいっぱいです。枠を空けるか出撃枠を増やしてください。');
+      showToast('編成枠がいっぱいです。枠を空けるか出撃枠を増やしてください。');
     }
   };
 
@@ -56,7 +64,7 @@ export default function BuilderPage() {
   const handleSaveTeam = () => {
     const validCreatures = selectedTeam.filter((c): c is Creature => c !== null);
     if (validCreatures.length === 0) {
-      alert('1体以上編成してください。');
+      showToast('1体以上編成してください。');
       return;
     }
     
@@ -68,13 +76,14 @@ export default function BuilderPage() {
     };
     
     addTeam(newTeam);
-    alert('チームを保存しました！');
+    showToast('チームを保存しました！');
   };
 
   if (!isLoaded) return null;
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto p-4 bg-amber-50">
+    <div className="flex flex-col h-full max-w-5xl mx-auto p-4 bg-amber-50 relative">
+      <Toast message={toastMsg} isVisible={toastVisible} onClose={() => setToastVisible(false)} />
       <div className="flex items-center justify-between mb-6 pt-4">
         <Link href="/" className="p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-slate-400 hover:shadow-md transition-all">
           <ArrowLeft className="w-6 h-6 text-slate-700" />
@@ -197,7 +206,7 @@ export default function BuilderPage() {
                       >
                         配置
                       </button>
-                      <button onClick={() => { if (confirm('削除しますか？')) deleteCreature(c.id); }} 
+                      <button onClick={() => { deleteCreature(c.id); showToast(`${c.name}を削除しました`); }} 
                         className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -234,7 +243,7 @@ export default function BuilderPage() {
                       >
                         {activeTeamId === t.id ? '出撃セット' : '選択'}
                       </button>
-                      <button onClick={() => { if (confirm('チームを削除しますか？')) deleteTeam(t.id); }} 
+                      <button onClick={() => { deleteTeam(t.id); showToast(`チーム「${t.name}」を削除しました`); }} 
                         className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />

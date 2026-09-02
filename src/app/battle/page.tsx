@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, RefreshCw, EyeOff, X, Crosshair } from 'lucide-react';
 import { useGameStore } from '../../hooks/useGameStore';
 import { Creature, CreatureStats, calculateTotalCost, calculateStatCost } from '../../types/game';
+import { Toast } from '../../components/Toast';
 
 type CellState = {
   type: 'empty' | 'wall';
@@ -38,6 +39,14 @@ export default function BattlePage() {
   const [resultMessage, setResultMessage] = useState('');
   const [board, setBoard] = useState<CellState[][]>([]);
   const boardRef = useRef<CellState[][]>([]);
+  
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+  }, []);
 
   useEffect(() => {
     boardRef.current = board;
@@ -225,7 +234,7 @@ export default function BattlePage() {
            
            // Check if visible
            if (!visibleCells.has(`${x},${y}`)) {
-              alert('見えない敵を攻撃することはできません。');
+              showToast('見えない敵を攻撃することはできません。');
               return;
            }
 
@@ -242,7 +251,7 @@ export default function BattlePage() {
            if (newHp <= 0) {
              // Enemy defeated
              alertMsg += '撃破しました！';
-             alert(alertMsg);
+             showToast(alertMsg);
              newBoard[y][x] = { ...newBoard[y][x], unit: null };
              if (defender.isCommander) { 
                setPhase('result');
@@ -256,7 +265,7 @@ export default function BattlePage() {
              }
            } else {
              alertMsg += `（残りHP: ${newHp}）`;
-             alert(alertMsg);
+             showToast(alertMsg);
              newBoard[y][x] = { ...newBoard[y][x], unit: { ...defender, hp: newHp } };
            }
            // End attacker's turn
@@ -274,7 +283,7 @@ export default function BattlePage() {
       // Select a friendly unit
       if (cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed) {
         if (activeAction === 'attack') {
-          alert('移動完了後は、攻撃対象を選択するか待機してください。');
+          showToast('移動完了後は、攻撃対象を選択するか待機してください。');
           return;
         }
         if (activeUnitPos?.x === x && activeUnitPos?.y === y) {
@@ -316,7 +325,7 @@ export default function BattlePage() {
 
   const startBattle = () => {
     if (pendingPlacement.length > 0) {
-      alert('すべてのユニットを配置してください');
+      showToast('すべてのユニットを配置してください');
       return;
     }
     const numEnemies = Math.floor(Math.random() * 5) + 1; // 1 to 5
@@ -544,6 +553,7 @@ export default function BattlePage() {
 
   return (
     <div className="flex flex-col h-full bg-amber-50 relative overflow-hidden">
+      <Toast message={toastMsg} isVisible={toastVisible} onClose={() => setToastVisible(false)} />
       <div className="absolute inset-0 opacity-40 pointer-events-none" 
            style={{ backgroundImage: 'radial-gradient(circle at center, #fef3c7 0%, #fdf8f6 100%)' }} />
            
@@ -727,11 +737,13 @@ export default function BattlePage() {
                             )}
                           </div>
                       ) : (
-                          <span className="text-sm font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border-2 border-slate-100">未行動のユニットをタップして指示を出してください</span>
+                          <span className="text-sm font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border-2 border-slate-100">
+                            {currentTurn === 'player' ? '未行動のユニットをタップして指示を出してください' : '相手のターンです...'}
+                          </span>
                       )}
                     </div>
-                    <div className="px-5 py-2 bg-blue-100 border-4 border-blue-300 rounded-2xl text-blue-700 text-lg font-black shadow-sm transform -rotate-2">
-                      PLAYER TURN
+                    <div className={`px-5 py-2 border-4 rounded-2xl text-lg font-black shadow-sm transform -rotate-2 transition-all duration-500 ${currentTurn === 'player' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-rose-100 border-rose-300 text-rose-700 scale-110'}`}>
+                      {currentTurn === 'player' ? 'PLAYER TURN' : 'ENEMY TURN'}
                     </div>
                   </div>
                 </div>
