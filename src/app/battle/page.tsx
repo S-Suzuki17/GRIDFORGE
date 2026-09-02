@@ -54,8 +54,13 @@ export default function BattlePage() {
     return null;
   }, [inspectedUnitId, board]);
 
+  // Battle State
+  const [activeUnitPos, setActiveUnitPos] = useState<Coordinate | null>(null);
+  const [activeAction, setActiveAction] = useState<'move' | 'attack' | null>(null);
+  const [highlightedCells, setHighlightedCells] = useState<Coordinate[]>([]);
+
   const displayUnit = inspectedUnit || (activeUnitPos ? board[activeUnitPos.y][activeUnitPos.x].unit : null);
-  
+
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setToastVisible(true);
@@ -67,11 +72,6 @@ export default function BattlePage() {
   
   const [pendingPlacement, setPendingPlacement] = useState<BattleUnit[]>([]);
   const [selectedToPlace, setSelectedToPlace] = useState<BattleUnit | null>(null);
-
-  // Battle State
-  const [activeUnitPos, setActiveUnitPos] = useState<Coordinate | null>(null);
-  const [activeAction, setActiveAction] = useState<'move' | 'attack' | null>(null);
-  const [highlightedCells, setHighlightedCells] = useState<Coordinate[]>([]);
 
   useEffect(() => {
     if (!isLoaded) return;
