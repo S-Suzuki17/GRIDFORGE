@@ -75,7 +75,7 @@ export default function BattlePage() {
 
     const commander: BattleUnit = {
       id: 'commander_player', isEnemy: false, isCommander: true,
-      name: 'PLAYER', appearance: '👑', hp: 50, maxHp: 50, atk: 15, def: 5,
+      name: 'PLAYER', appearance: '👑', hp: 100, maxHp: 100, atk: 15, def: 5,
       mov: 2, rng: 2, sense: 2, hasActed: false
     };
 
@@ -347,7 +347,7 @@ export default function BattlePage() {
     const enemyUnits: BattleUnit[] = [
       {
         id: 'commander_enemy', isEnemy: true, isCommander: true,
-        name: 'CPU大将', appearance: '👹', hp: 50, maxHp: 50, atk: 15, def: 5,
+        name: 'CPU大将', appearance: '👹', hp: 100, maxHp: 100, atk: 15, def: 5,
         mov: 2, rng: 2, sense: 2, hasActed: false
       },
       ...enemies
