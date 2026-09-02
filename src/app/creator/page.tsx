@@ -9,11 +9,11 @@ import Link from 'next/link';
 import { Toast } from '../../components/Toast';
 
 const appearances = [
-  '/creatures/base.jpg',
   '/creatures/knight.jpg',
   '/creatures/mage.jpg',
   '/creatures/ninja.jpg',
-  '/creatures/heavy.jpg'
+  '/creatures/heavy.jpg',
+  '/creatures/mecha.jpg'
 ];
 const MAX_COST = 600;
 

@@ -97,7 +97,7 @@ export default function BattlePage() {
 
     const commander: BattleUnit = {
       id: 'commander_player', isEnemy: false, isCommander: true,
-      name: 'PLAYER', appearance: '/creatures/base.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
+      name: 'PLAYER', appearance: '/creatures/mecha.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
       mov: 2, rng: 2, sense: 2, hasActed: false
     };
 
@@ -357,7 +357,7 @@ export default function BattlePage() {
       isEnemy: true,
       isCommander: false,
       name: `CPU兵 ${i+1}`,
-      appearance: ['/creatures/base.jpg', '/creatures/knight.jpg', '/creatures/mage.jpg', '/creatures/ninja.jpg', '/creatures/heavy.jpg'][Math.floor(Math.random() * 5)],
+      appearance: ['/creatures/knight.jpg', '/creatures/mage.jpg', '/creatures/ninja.jpg', '/creatures/heavy.jpg', '/creatures/mecha.jpg'][Math.floor(Math.random() * 5)],
       hp: 1, maxHp: 1, atk: 0, def: 0, mov: 1, rng: 1, sense: 0,
       hasActed: false
     }));
