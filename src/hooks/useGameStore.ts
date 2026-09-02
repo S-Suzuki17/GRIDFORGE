@@ -60,10 +60,11 @@ export function useGameStore() {
     setCreatures(prev => prev.filter(c => c.id !== id));
   };
 
-  const addTeam = (team: Omit<Team, 'id'>) => {
+  const addTeam = (team: Omit<Team, 'id' | 'createdAt'>) => {
     const newTeam: Team = {
       ...team,
       id: uuidv4(),
+      createdAt: Date.now(),
     };
     setTeams(prev => [...prev, newTeam]);
   };
