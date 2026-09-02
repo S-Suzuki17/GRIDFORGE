@@ -136,13 +136,25 @@ export default function CreatorPage() {
               maxLength={12}
             />
           </div>
-          <div className="w-24 flex flex-col items-center">
-            <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Icon</h2>
-            <button className="w-20 h-20 bg-slate-50 border-2 border-slate-200 rounded-2xl flex items-center justify-center relative group hover:border-blue-400 transition-colors">
-              {appearance.startsWith('/') ? <img src={appearance} className="w-full h-full object-cover rounded-xl" /> : <span className="text-5xl">{appearance}</span>}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border-4 border-slate-200 rounded-2xl shadow-xl flex-wrap justify-center items-center p-2 hidden group-hover:flex w-64 z-20 gap-2">
+          <div className="w-28 flex flex-col items-center">
+            <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Icon (変更)</h2>
+            <button className="w-20 h-20 bg-slate-50 border-2 border-slate-200 rounded-full flex items-center justify-center relative group hover:border-blue-400 transition-colors">
+              {/* Left Arm */}
+              <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-5 rounded-full bg-amber-700 border-2 border-amber-950/20 shadow-sm anim-arm-left z-0" />
+              {/* Right Arm */}
+              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-5 rounded-full bg-amber-700 border-2 border-amber-950/20 shadow-sm anim-arm-right z-0" />
+              {/* Left Foot */}
+              <div className="absolute left-2 -bottom-1.5 w-4.5 h-3 rounded-full bg-amber-700 border-2 border-amber-950/20 shadow-md anim-foot-left z-0" />
+              {/* Right Foot */}
+              <div className="absolute right-2 -bottom-1.5 w-4.5 h-3 rounded-full bg-amber-700 border-2 border-amber-950/20 shadow-md anim-foot-right z-0" />
+
+              <div className="w-full h-full rounded-full overflow-hidden z-10 border-2 border-white shadow-sm flex items-center justify-center">
+                {appearance.startsWith('/') ? <img src={appearance} className="w-full h-full object-cover" /> : <span className="text-5xl">{appearance}</span>}
+              </div>
+
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border-4 border-slate-200 rounded-2xl shadow-xl flex-wrap justify-center items-center p-3 hidden group-hover:flex w-64 z-30 gap-2">
                  {appearances.map(app => (
-                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:scale-110 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all w-16 h-16">
+                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:scale-110 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all w-16 h-16 shadow-sm">
                       {app.startsWith('/') ? <img src={app} className="w-full h-full object-cover" /> : <span className="text-3xl flex items-center justify-center w-full h-full">{app}</span>}
                    </div>
                  ))}

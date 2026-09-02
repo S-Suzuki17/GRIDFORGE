@@ -58,6 +58,8 @@ export default function BattlePage() {
   const [activeUnitPos, setActiveUnitPos] = useState<Coordinate | null>(null);
   const [activeAction, setActiveAction] = useState<'move' | 'attack' | null>(null);
   const [highlightedCells, setHighlightedCells] = useState<Coordinate[]>([]);
+  const [attackingUnitId, setAttackingUnitId] = useState<string | null>(null);
+  const [damagedUnitId, setDamagedUnitId] = useState<string | null>(null);
 
   const displayUnit = inspectedUnit || (activeUnitPos ? board[activeUnitPos.y][activeUnitPos.x].unit : null);
 
@@ -262,6 +264,13 @@ export default function BattlePage() {
            const { damage, supportCount } = calculateDamage(attacker, activeUnitPos.x, activeUnitPos.y, defender, x, y, board);
            const newHp = defender.hp - damage;
            
+           setAttackingUnitId(attacker.id);
+           setDamagedUnitId(defender.id);
+           setTimeout(() => {
+             setAttackingUnitId(null);
+             setDamagedUnitId(null);
+           }, 500);
+
            const newBoard = [...board];
            newBoard[y] = [...newBoard[y]];
            
@@ -522,6 +531,12 @@ export default function BattlePage() {
              const { damage, supportCount } = calculateDamage(enemyUnit, ex, ey, targetToAttack.unit, targetToAttack.x, targetToAttack.y, boardRef.current);
              const newHp = targetToAttack.unit.hp - damage;
              
+             setAttackingUnitId(enemyUnit.id);
+             setDamagedUnitId(targetToAttack.unit.id);
+             await delay(400);
+             setAttackingUnitId(null);
+             setDamagedUnitId(null);
+             
              newBoard = [...boardRef.current];
              newBoard[targetToAttack.y] = [...newBoard[targetToAttack.y]];
              
@@ -685,17 +700,66 @@ export default function BattlePage() {
                         {cell.unit && !isHiddenEnemy && (
                           <div 
                             style={{
-                              transform: `rotateX(-24deg) translateY(${isActive ? '-10px' : '-4px'}) translateZ(12px)`,
                               transformStyle: 'preserve-3d'
                             }}
-                            className={`text-2xl sm:text-4xl w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white border-4 flex items-center justify-center rounded-full shadow-[0_8px_12px_rgba(0,0,0,0.25)] relative select-none transition-all ${cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'} ${cell.unit.hasActed ? 'opacity-50 grayscale scale-95' : 'hover:scale-105'} ${isActive ? 'scale-110 shadow-[0_12px_20px_rgba(245,158,11,0.4)]' : ''}`}
+                            className={`w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 relative flex items-center justify-center select-none transition-all ${
+                              cell.unit.id === attackingUnitId ? 'anim-attack z-40' : 
+                              cell.unit.id === damagedUnitId ? 'anim-hit z-40' : 
+                              isActive ? 'anim-active-hop z-30' : 
+                              !cell.unit.hasActed ? 'anim-idle-waddle' : ''
+                            }`}
                           >
-                            {cell.unit.appearance.startsWith('/') ? <img src={cell.unit.appearance} className="w-full h-full object-cover rounded-full" /> : cell.unit.appearance}
-                            <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-sm ${cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'}`}>
+                            {/* Left Arm / Paw */}
+                            <div 
+                              className={`absolute -left-1 sm:-left-1.5 top-1/2 -translate-y-1/2 w-2.5 sm:w-3.5 h-3.5 sm:h-5 rounded-full border-2 border-amber-950/20 shadow-sm z-0 ${
+                                cell.unit.isEnemy ? 'bg-amber-900' : 'bg-amber-700'
+                              } ${cell.unit.hasActed ? '' : isActive ? 'anim-arm-left-fast' : 'anim-arm-left'}`}
+                            />
+
+                            {/* Right Arm / Paw */}
+                            <div 
+                              className={`absolute -right-1 sm:-right-1.5 top-1/2 -translate-y-1/2 w-2.5 sm:w-3.5 h-3.5 sm:h-5 rounded-full border-2 border-amber-950/20 shadow-sm z-0 ${
+                                cell.unit.isEnemy ? 'bg-amber-900' : 'bg-amber-700'
+                              } ${cell.unit.hasActed ? '' : isActive ? 'anim-arm-right-fast' : 'anim-arm-right'}`}
+                            />
+
+                            {/* Left Foot Paw */}
+                            <div 
+                              className={`absolute left-1.5 sm:left-2 -bottom-1.5 sm:-bottom-2 w-3 sm:w-4.5 h-2.5 sm:h-3.5 rounded-full border-2 border-amber-950/20 shadow-md z-0 ${
+                                cell.unit.isEnemy ? 'bg-amber-900' : 'bg-amber-700'
+                              } ${cell.unit.hasActed ? '' : isActive ? 'anim-foot-left-fast' : 'anim-foot-left'}`}
+                            />
+
+                            {/* Right Foot Paw */}
+                            <div 
+                              className={`absolute right-1.5 sm:right-2 -bottom-1.5 sm:-bottom-2 w-3 sm:w-4.5 h-2.5 sm:h-3.5 rounded-full border-2 border-amber-950/20 shadow-md z-0 ${
+                                cell.unit.isEnemy ? 'bg-amber-900' : 'bg-amber-700'
+                              } ${cell.unit.hasActed ? '' : isActive ? 'anim-foot-right-fast' : 'anim-foot-right'}`}
+                            />
+
+                            {/* Main Body Avatar */}
+                            <div className={`w-full h-full bg-white border-4 flex items-center justify-center rounded-full shadow-[0_8px_14px_rgba(0,0,0,0.22)] relative overflow-hidden z-10 transition-all ${
+                              cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'
+                            } ${cell.unit.hasActed ? 'opacity-60 grayscale' : ''} ${
+                              isActive ? 'ring-4 ring-amber-400 ring-offset-1' : ''
+                            }`}>
+                              {cell.unit.appearance.startsWith('/') ? (
+                                <img src={cell.unit.appearance} className="w-full h-full object-cover" alt={cell.unit.name} />
+                              ) : (
+                                <span className="text-2xl sm:text-4xl">{cell.unit.appearance}</span>
+                              )}
+                            </div>
+
+                            {/* HP Badge */}
+                            <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-md z-20 ${
+                              cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'
+                            }`}>
                               {cell.unit.hp}
                             </div>
+
+                            {/* Commander Crown Badge */}
                             {cell.unit.isCommander && (
-                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs sm:text-sm drop-shadow-md animate-bounce pointer-events-none">
+                              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-xs sm:text-sm drop-shadow-md animate-bounce pointer-events-none z-20">
                                 👑
                               </div>
                             )}
