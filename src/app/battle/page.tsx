@@ -1,0 +1,699 @@
+'use client';
+
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, RefreshCw, EyeOff, X, Crosshair } from 'lucide-react';
+import { useGameStore } from '../../hooks/useGameStore';
+import { Creature, CreatureStats, calculateTotalCost, calculateStatCost } from '../../types/game';
+
+type CellState = {
+  type: 'empty' | 'wall';
+  unit?: BattleUnit | null;
+  isPlayerArea: boolean;
+  isEnemyArea: boolean;
+};
+
+type BattleUnit = {
+  id: string;
+  isEnemy: boolean;
+  isCommander: boolean;
+  name: string;
+  appearance: string;
+  hp: number;
+  maxHp: number;
+  atk: number;
+  def: number;
+  mov: number;
+  rng: number;
+  sense: number;
+  hasActed?: boolean;
+};
+
+type Coordinate = { x: number, y: number };
+
+export default function BattlePage() {
+  const { isLoaded, teams, activeTeamId } = useGameStore();
+  const [phase, setPhase] = useState<'placement' | 'battle' | 'result'>('placement');
+  const [currentTurn, setCurrentTurn] = useState<'player' | 'enemy'>('player');
+  const [resultMessage, setResultMessage] = useState('');
+  const [board, setBoard] = useState<CellState[][]>([]);
+  const boardRef = useRef<CellState[][]>([]);
+
+  useEffect(() => {
+    boardRef.current = board;
+  }, [board]);
+  
+  const [pendingPlacement, setPendingPlacement] = useState<BattleUnit[]>([]);
+  const [selectedToPlace, setSelectedToPlace] = useState<BattleUnit | null>(null);
+
+  // Battle State
+  const [activeUnitPos, setActiveUnitPos] = useState<Coordinate | null>(null);
+  const [activeAction, setActiveAction] = useState<'move' | 'attack' | null>(null);
+  const [highlightedCells, setHighlightedCells] = useState<Coordinate[]>([]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    const newBoard: CellState[][] = Array(7).fill(null).map((_, y) => 
+      Array(7).fill(null).map((_, x) => ({
+        type: 'empty', isEnemyArea: y <= 1, isPlayerArea: y >= 5, unit: null,
+      }))
+    );
+    const wallCount = Math.floor(Math.random() * 6);
+    let wallsPlaced = 0;
+    while (wallsPlaced < wallCount) {
+      const rx = Math.floor(Math.random() * 7);
+      const ry = Math.floor(Math.random() * 3) + 2; 
+      if (newBoard[ry][rx].type === 'empty') {
+        newBoard[ry][rx].type = 'wall';
+        wallsPlaced++;
+      }
+    }
+    setBoard(newBoard);
+
+    const active = teams.find(t => t.id === activeTeamId) || teams[0];
+    const teamCreatures = active ? active.creatures : [];
+
+    const commander: BattleUnit = {
+      id: 'commander_player', isEnemy: false, isCommander: true,
+      name: 'PLAYER', appearance: '👑', hp: 50, maxHp: 50, atk: 15, def: 5,
+      mov: 2, rng: 2, sense: 2, hasActed: false
+    };
+
+    const friendlyUnits: BattleUnit[] = teamCreatures.map((c, i) => ({
+      id: `friendly_${i}_${c.id}`, isEnemy: false, isCommander: false,
+      name: c.name, appearance: c.appearance, hp: c.stats.hp, maxHp: c.stats.hp,
+      atk: c.stats.atk, def: c.stats.def,
+      mov: c.stats.mov,
+      rng: c.stats.rng,
+      sense: c.stats.sense,
+      hasActed: false
+    }));
+
+    setPendingPlacement([commander, ...friendlyUnits]);
+  }, [isLoaded, teams, activeTeamId]);
+
+  // Shared BFS for MOV, RNG, and SENSE
+  // isMovement: if true, blocked by units. If false, blocked only by walls.
+  const calculateBFS = useCallback((startX: number, startY: number, maxDist: number, isMovement: boolean, currentBoard: CellState[][]) => {
+    const reachable: Coordinate[] = [];
+    const visited = new Set<string>();
+    const queue: { x: number, y: number, dist: number }[] = [{ x: startX, y: startY, dist: 0 }];
+    
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      const key = `${curr.x},${curr.y}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      
+      if (curr.dist > 0) {
+        reachable.push({ x: curr.x, y: curr.y });
+      }
+
+      if (curr.dist < maxDist) {
+        const neighbors = [
+          { x: curr.x, y: curr.y - 1 }, { x: curr.x, y: curr.y + 1 },
+          { x: curr.x - 1, y: curr.y }, { x: curr.x + 1, y: curr.y }
+        ];
+        
+        for (const n of neighbors) {
+          if (n.x >= 0 && n.x < 7 && n.y >= 0 && n.y < 7) {
+            const cell = currentBoard[n.y][n.x];
+            // Walls block everything (MOV, RNG, SENSE)
+            if (cell.type === 'wall') continue;
+            
+            // For movement, other units block the path
+            if (isMovement && cell.unit && !(n.x === startX && n.y === startY)) continue;
+
+            queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+          }
+        }
+      }
+    }
+    return reachable;
+  }, []);
+
+  // Calculate visible cells based on all friendly units' SENSE
+  const visibleCells = useMemo(() => {
+    if (phase !== 'battle') return new Set<string>();
+    const visible = new Set<string>();
+    board.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell.unit && !cell.unit.isEnemy) {
+          visible.add(`${x},${y}`); // See own cell
+          if (cell.unit.sense > 0) {
+            const seen = calculateBFS(x, y, cell.unit.sense, false, board);
+            seen.forEach(s => visible.add(`${s.x},${s.y}`));
+          }
+        }
+      });
+    });
+    return visible;
+  }, [board, phase, calculateBFS]);
+
+  const handleCellClick = (x: number, y: number) => {
+    const cell = board[y][x];
+
+    if (phase === 'placement') {
+      if (cell.isPlayerArea && cell.type === 'empty' && !cell.unit && selectedToPlace) {
+        const newBoard = [...board];
+        newBoard[y] = [...newBoard[y]];
+        newBoard[y][x] = { ...newBoard[y][x], unit: selectedToPlace };
+        setBoard(newBoard);
+        setPendingPlacement(prev => prev.filter(u => u.id !== selectedToPlace.id));
+        setSelectedToPlace(null);
+      } else if (cell.isPlayerArea && cell.unit && !cell.unit.isEnemy) {
+        const unitToReturn = cell.unit;
+        const newBoard = [...board];
+        newBoard[y] = [...newBoard[y]];
+        newBoard[y][x] = { ...newBoard[y][x], unit: null };
+        setBoard(newBoard);
+        setPendingPlacement(prev => [...prev, unitToReturn]);
+        if (selectedToPlace) setSelectedToPlace(null);
+      }
+      return;
+    }
+
+    if (phase === 'battle') {
+      const isHighlighted = highlightedCells.some(c => c.x === x && c.y === y);
+
+      if (activeAction === 'move' && activeUnitPos && isHighlighted) {
+        // Execute Move
+        const newBoard = [...board];
+        const unit = newBoard[activeUnitPos.y][activeUnitPos.x].unit!;
+        
+        newBoard[activeUnitPos.y] = [...newBoard[activeUnitPos.y]];
+        newBoard[activeUnitPos.y][activeUnitPos.x] = { ...newBoard[activeUnitPos.y][activeUnitPos.x], unit: null };
+        
+        newBoard[y] = [...newBoard[y]];
+        newBoard[y][x] = { ...newBoard[y][x], unit: unit };
+        
+        setBoard(newBoard);
+        setActiveUnitPos({ x, y });
+        setActiveAction('attack');
+        const attackable = calculateBFS(x, y, unit.rng, false, board);
+        setHighlightedCells(attackable.filter(c => visibleCells.has(`${c.x},${c.y}`)));
+        return;
+      }
+
+      if (activeAction === 'attack' && activeUnitPos && isHighlighted) {
+        // Execute Attack if there is an enemy
+        if (cell.unit && cell.unit.isEnemy) {
+           const attacker = board[activeUnitPos.y][activeUnitPos.x].unit!;
+           const defender = cell.unit;
+           
+           // Check if visible
+           if (!visibleCells.has(`${x},${y}`)) {
+              alert('見えない敵を攻撃することはできません。');
+              return;
+           }
+
+           const damage = Math.max(1, attacker.atk - defender.def);
+           const newHp = defender.hp - damage;
+           
+           const newBoard = [...board];
+           newBoard[y] = [...newBoard[y]];
+           
+           if (newHp <= 0) {
+             // Enemy defeated
+             alert(`敵に ${damage} ダメージ！撃破しました！`);
+             newBoard[y][x] = { ...newBoard[y][x], unit: null };
+             if (defender.isCommander) { 
+               setPhase('result');
+               setResultMessage('VICTORY! 敵将を討ち取りました！');
+             } else {
+               // Check if all enemies are dead (currently only 1 test enemy)
+               const hasEnemies = newBoard.some(r => r.some(c => c.unit && c.unit.isEnemy));
+               if (!hasEnemies) {
+                 setPhase('result');
+                 setResultMessage('VICTORY! すべての敵を撃破しました！');
+               }
+             }
+           } else {
+             alert(`敵に ${damage} ダメージ！（残りHP: ${newHp}）`);
+             newBoard[y][x] = { ...newBoard[y][x], unit: { ...defender, hp: newHp } };
+           }
+
+           // End attacker's turn
+           newBoard[activeUnitPos.y] = [...newBoard[activeUnitPos.y]];
+           newBoard[activeUnitPos.y][activeUnitPos.x] = { ...newBoard[activeUnitPos.y][activeUnitPos.x], unit: { ...attacker, hasActed: true } };
+           
+           setBoard(newBoard);
+           setActiveUnitPos(null);
+           setActiveAction(null);
+           setHighlightedCells([]);
+           return;
+        }
+      }
+
+      // Select a friendly unit
+      if (cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed) {
+        if (activeUnitPos?.x === x && activeUnitPos?.y === y) {
+          // Deselect
+          setActiveUnitPos(null);
+          setActiveAction(null);
+          setHighlightedCells([]);
+        } else {
+          // Select for Move
+          setActiveUnitPos({ x, y });
+          setActiveAction('move');
+          setHighlightedCells(calculateBFS(x, y, cell.unit.mov, true, board));
+        }
+      }
+    }
+  };
+
+  const skipAction = () => {
+    if (activeUnitPos && activeAction) {
+      if (activeAction === 'move') {
+        // Skip move, go to attack
+        const unit = board[activeUnitPos.y][activeUnitPos.x].unit!;
+        setActiveAction('attack');
+        const attackable = calculateBFS(activeUnitPos.x, activeUnitPos.y, unit.rng, false, board);
+        setHighlightedCells(attackable.filter(c => visibleCells.has(`${c.x},${c.y}`)));
+      } else if (activeAction === 'attack') {
+        // Skip attack, end turn for this unit
+        const newBoard = [...board];
+        const unit = newBoard[activeUnitPos.y][activeUnitPos.x].unit!;
+        newBoard[activeUnitPos.y] = [...newBoard[activeUnitPos.y]];
+        newBoard[activeUnitPos.y][activeUnitPos.x] = { ...newBoard[activeUnitPos.y][activeUnitPos.x], unit: { ...unit, hasActed: true } };
+        setBoard(newBoard);
+        setActiveUnitPos(null);
+        setActiveAction(null);
+        setHighlightedCells([]);
+      }
+    }
+  };
+
+  const startBattle = () => {
+    if (pendingPlacement.length > 0) {
+      alert('すべてのユニットを配置してください');
+      return;
+    }
+    const numEnemies = Math.floor(Math.random() * 5) + 1; // 1 to 5
+    let remainingPts = 600;
+    
+    const enemies = Array(numEnemies).fill(null).map((_, i) => ({
+      id: `enemy_rand_${i}`,
+      isEnemy: true,
+      isCommander: false,
+      name: `CPU兵 ${i+1}`,
+      appearance: ['👾', '👻', '🤖', '👺', '👽'][Math.floor(Math.random() * 5)],
+      hp: 1, maxHp: 1, atk: 0, def: 0, mov: 1, rng: 1, sense: 0,
+      hasActed: false
+    }));
+
+    // Deduct base costs
+    remainingPts -= numEnemies * calculateTotalCost({ hp: 1, atk: 0, def: 0, mov: 1, rng: 1, sense: 0 });
+
+    while(remainingPts > 0) {
+      const e = enemies[Math.floor(Math.random() * enemies.length)];
+      
+      const getNextCost = (key: keyof CreatureStats, val: number) => {
+         return calculateStatCost(key, val + 1) - calculateStatCost(key, val);
+      };
+
+      const options: {key: string, cost: number}[] = [];
+      const hpCost = getNextCost('hp', e.hp);
+      if (remainingPts >= hpCost) options.push({key: 'hp', cost: hpCost});
+      
+      const atkCost = getNextCost('atk', e.atk);
+      if (remainingPts >= atkCost) options.push({key: 'atk', cost: atkCost});
+      
+      const defCost = getNextCost('def', e.def);
+      if (remainingPts >= defCost) options.push({key: 'def', cost: defCost});
+      
+      const movCost = getNextCost('mov', e.mov);
+      if (remainingPts >= movCost) options.push({key: 'mov', cost: movCost});
+      
+      const rngCost = getNextCost('rng', e.rng);
+      if (remainingPts >= rngCost) options.push({key: 'rng', cost: rngCost});
+      
+      const senseCost = getNextCost('sense', e.sense);
+      if (remainingPts >= senseCost) options.push({key: 'sense', cost: senseCost});
+
+      if (options.length === 0) break; // Should not happen since HP cost starts low, but just in case
+
+      const pick = options[Math.floor(Math.random() * options.length)];
+      (e as any)[pick.key] += 1;
+      remainingPts -= pick.cost;
+    }
+    
+    enemies.forEach(e => e.maxHp = e.hp);
+
+    const enemyUnits: BattleUnit[] = [
+      {
+        id: 'commander_enemy', isEnemy: true, isCommander: true,
+        name: 'CPU大将', appearance: '👹', hp: 50, maxHp: 50, atk: 15, def: 5,
+        mov: 2, rng: 2, sense: 2, hasActed: false
+      },
+      ...enemies
+    ];
+
+    const availableCells: {x: number, y: number}[] = [];
+    for(let y=0; y<=1; y++) {
+      for(let x=0; x<7; x++) {
+         if (board[y][x].type === 'empty') availableCells.push({x, y});
+      }
+    }
+    
+    for(let i = availableCells.length - 1; i > 0; i--) {
+       const j = Math.floor(Math.random() * (i + 1));
+       [availableCells[i], availableCells[j]] = [availableCells[j], availableCells[i]];
+    }
+
+    const newBoard = [...board].map(row => [...row]);
+    enemyUnits.forEach((unit, idx) => {
+       if (idx < availableCells.length) {
+         const {x, y} = availableCells[idx];
+         newBoard[y][x] = { ...newBoard[y][x], unit };
+       }
+    });
+
+    setBoard(newBoard);
+    setPhase('battle');
+  };
+
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+  useEffect(() => {
+    if (currentTurn === 'enemy' && phase === 'battle') {
+      const runEnemyTurn = async () => {
+        // Collect all enemies on the board
+        const enemyIds: string[] = [];
+        boardRef.current.forEach(row => row.forEach(c => {
+          if (c.unit && c.unit.isEnemy) enemyIds.push(c.unit.id);
+        }));
+
+        for (const eId of enemyIds) {
+          await delay(600); // Wait between units
+          
+          let ex = -1, ey = -1;
+          let enemyUnit = null;
+          for (let y = 0; y < 7; y++) {
+            for (let x = 0; x < 7; x++) {
+              const u = boardRef.current[y][x].unit;
+              if (u && u.id === eId) { ex = x; ey = y; enemyUnit = u; break; }
+            }
+          }
+          if (!enemyUnit) continue; // Enemy might have died somehow
+
+          // 1. Move phase
+          // Find player units
+          const playerUnits: {x: number, y: number}[] = [];
+          boardRef.current.forEach((r, y) => r.forEach((c, x) => {
+            if (c.unit && !c.unit.isEnemy) playerUnits.push({x, y});
+          }));
+
+          if (playerUnits.length === 0) continue;
+
+          // Find closest player unit by Manhattan distance
+          playerUnits.sort((a, b) => {
+             const distA = Math.abs(a.x - ex) + Math.abs(a.y - ey);
+             const distB = Math.abs(b.x - ex) + Math.abs(b.y - ey);
+             return distA - distB;
+          });
+          const target = playerUnits[0];
+
+          // Calculate all reachable cells
+          const reachable = calculateBFS(ex, ey, enemyUnit.mov, true, boardRef.current);
+          reachable.push({x: ex, y: ey}); // including staying in place
+          
+          // Pick the cell that gets us closest to the target
+          reachable.sort((a, b) => {
+             const distA = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
+             const distB = Math.abs(b.x - target.x) + Math.abs(b.y - target.y);
+             return distA - distB;
+          });
+
+          const bestMove = reachable[0];
+          
+          let newBoard = [...boardRef.current];
+          if (bestMove.x !== ex || bestMove.y !== ey) {
+             const unitToMove = newBoard[ey][ex].unit!;
+             newBoard[ey] = [...newBoard[ey]];
+             newBoard[ey][ex] = { ...newBoard[ey][ex], unit: null };
+             
+             newBoard[bestMove.y] = [...newBoard[bestMove.y]];
+             newBoard[bestMove.y][bestMove.x] = { ...newBoard[bestMove.y][bestMove.x], unit: unitToMove };
+             
+             setBoard(newBoard);
+             boardRef.current = newBoard;
+             ex = bestMove.x; 
+             ey = bestMove.y;
+             await delay(400); // short pause after move
+          }
+
+          // 2. Attack phase
+          const attackable = calculateBFS(ex, ey, enemyUnit.rng, false, boardRef.current);
+          // See if any player unit is in attackable cells
+          let targetToAttack = null;
+          for (const cell of attackable) {
+             const u = boardRef.current[cell.y][cell.x].unit;
+             if (u && !u.isEnemy) {
+               targetToAttack = { x: cell.x, y: cell.y, unit: u };
+               break; // just attack the first one we find
+             }
+          }
+
+          if (targetToAttack) {
+             const damage = Math.max(1, enemyUnit.atk - targetToAttack.unit.def);
+             const newHp = targetToAttack.unit.hp - damage;
+             
+             newBoard = [...boardRef.current];
+             newBoard[targetToAttack.y] = [...newBoard[targetToAttack.y]];
+             
+             if (newHp <= 0) {
+                newBoard[targetToAttack.y][targetToAttack.x] = { ...newBoard[targetToAttack.y][targetToAttack.x], unit: null };
+                if (targetToAttack.unit.isCommander) {
+                   setPhase('result');
+                   setResultMessage('DEFEAT... 大将が討たれました');
+                }
+             } else {
+                newBoard[targetToAttack.y][targetToAttack.x] = { ...newBoard[targetToAttack.y][targetToAttack.x], unit: { ...targetToAttack.unit, hp: newHp } };
+             }
+             
+             setBoard(newBoard);
+             boardRef.current = newBoard;
+          }
+
+          // Mark as acted
+          newBoard = [...boardRef.current];
+          newBoard[ey] = [...newBoard[ey]];
+          newBoard[ey][ex] = { ...newBoard[ey][ex], unit: { ...newBoard[ey][ex].unit!, hasActed: true } };
+          setBoard(newBoard);
+          boardRef.current = newBoard;
+        }
+
+        await delay(500);
+
+        // Turn ends, pass back to player
+        // Reset all units hasActed
+        const finalBoard = boardRef.current.map(row => row.map(c => {
+          if (c.unit) return { ...c, unit: { ...c.unit, hasActed: false } };
+          return c;
+        }));
+        setBoard(finalBoard);
+        setCurrentTurn('player');
+      };
+
+      runEnemyTurn();
+    }
+  }, [currentTurn, phase, calculateBFS]);
+
+  const endTurn = () => {
+    setActiveUnitPos(null);
+    setActiveAction(null);
+    setHighlightedCells([]);
+    setCurrentTurn('enemy');
+  };
+
+  if (!isLoaded || board.length === 0) return null;
+
+  return (
+    <div className="flex flex-col h-full bg-stone-950 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-20 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(circle at center, #78350f 0%, #1c1917 100%)' }} />
+           
+      <div className="relative z-10 p-4 max-w-4xl mx-auto w-full h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/" className="p-2 bg-stone-800 rounded-full hover:bg-stone-700 text-stone-300">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="text-center">
+            <h1 className="text-xl sm:text-2xl font-bold text-amber-500 tracking-widest drop-shadow-md">
+              WASTELAND
+            </h1>
+            <div className="text-stone-400 text-sm font-semibold">
+              {phase === 'placement' ? '— 配置フェーズ —' : phase === 'battle' ? '— バトルフェーズ —' : '— 決着 —'}
+            </div>
+          </div>
+          {phase === 'placement' ? (
+            <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-3 py-2 bg-stone-800 hover:bg-stone-700 rounded-lg text-sm text-stone-300">
+              <RefreshCw className="w-4 h-4" /> 地形変更
+            </button>
+          ) : phase === 'battle' ? (
+            <button onClick={endTurn} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg font-bold text-sm text-white">
+              ターン終了
+            </button>
+          ) : <div className="w-10"></div>}
+        </div>
+
+        {phase === 'result' ? (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <h2 className="text-4xl font-bold text-amber-400 mb-6 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">{resultMessage}</h2>
+            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-stone-800 hover:bg-stone-700 rounded-lg font-bold">
+              もう一度プレイ
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 p-2 sm:p-4 bg-stone-900 rounded-xl border-4 border-stone-800 shadow-2xl mb-4 relative">
+                {board.map((row, y) => 
+                  row.map((cell, x) => {
+                    let cellBg = "bg-stone-800/80"; 
+                    if (cell.isPlayerArea) cellBg = phase === 'placement' ? "bg-blue-900/40 border-blue-500/50 cursor-pointer hover:bg-blue-800/60" : "bg-stone-800/80";
+                    if (cell.isEnemyArea) cellBg = "bg-red-900/10 border-red-900/20";
+                    if (cell.type === 'wall') cellBg = "bg-amber-900 border-amber-700 shadow-inner";
+
+                    const isVisible = visibleCells.has(`${x},${y}`);
+                    const isHiddenEnemy = phase === 'battle' && cell.unit && cell.unit.isEnemy && !isVisible;
+                    
+                    const isHighlighted = highlightedCells.some(c => c.x === x && c.y === y);
+                    const isActive = activeUnitPos?.x === x && activeUnitPos?.y === y;
+
+                    // Highlight colors
+                    let highlightClass = '';
+                    if (isHighlighted) {
+                      if (activeAction === 'move') highlightClass = 'bg-cyan-900/60 border-cyan-400 cursor-pointer hover:bg-cyan-800';
+                      if (activeAction === 'attack') highlightClass = 'bg-red-900/60 border-red-500 cursor-pointer hover:bg-red-800';
+                    }
+
+                    return (
+                      <div 
+                        key={`${x}-${y}`} 
+                        onClick={() => handleCellClick(x, y)}
+                        className={`w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-md border flex items-center justify-center transition-colors relative
+                          ${cellBg}
+                          ${highlightClass}
+                          ${isActive ? 'ring-4 ring-amber-400 z-10' : ''}
+                          ${phase === 'battle' && cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed && !isActive ? 'cursor-pointer hover:ring-2 hover:ring-amber-400' : ''}
+                        `}
+                      >
+                        {cell.type === 'wall' && (
+                          <div className={`text-2xl sm:text-4xl drop-shadow-lg ${phase === 'battle' && !isVisible ? 'opacity-30' : ''}`}>🪨</div>
+                        )}
+                        
+                        {cell.unit && !isHiddenEnemy && (
+                          <div className={`text-2xl sm:text-4xl drop-shadow-md relative select-none ${cell.unit.hasActed ? 'opacity-50 grayscale' : ''}`}>
+                            {cell.unit.appearance}
+                            <div className={`absolute -bottom-2 -right-2 text-[10px] sm:text-xs font-bold px-1 rounded text-white ${cell.unit.isEnemy ? 'bg-red-600' : 'bg-blue-600'}`}>
+                              {cell.unit.hp}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {isHiddenEnemy && (
+                          <div className="text-stone-700 opacity-30 pointer-events-none">
+                            <EyeOff className="w-6 h-6" />
+                          </div>
+                        )}
+                        
+                        {/* Target reticle for attack phase if enemy is visible */}
+                        {isHighlighted && activeAction === 'attack' && cell.unit && cell.unit.isEnemy && isVisible && (
+                          <div className="absolute inset-0 flex items-center justify-center text-red-400 animate-pulse pointer-events-none">
+                             <Crosshair className="w-8 h-8 sm:w-12 sm:h-12" strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="bg-stone-900 border border-stone-700 p-4 rounded-xl min-h-[120px]">
+              {phase === 'placement' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {pendingPlacement.map(unit => (
+                      <div 
+                        key={unit.id}
+                        onClick={() => setSelectedToPlace(selectedToPlace?.id === unit.id ? null : unit)}
+                        className={`cursor-pointer min-w-[60px] p-2 rounded-lg border-2 text-center transition-all ${
+                          selectedToPlace?.id === unit.id ? 'bg-amber-600/30 border-amber-500' : 'bg-stone-800 border-stone-600'
+                        }`}
+                      >
+                        <div className="text-3xl mb-1">{unit.appearance}</div>
+                        <div className="text-[10px] font-bold truncate">{unit.isCommander ? '大将' : unit.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-stone-400">青いマスをタップして配置</span>
+                    <button 
+                      onClick={startBattle}
+                      disabled={pendingPlacement.length > 0}
+                      className="px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-stone-700 disabled:text-stone-500 text-white font-bold rounded-lg transition-colors"
+                    >
+                      バトル開始
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {phase === 'battle' && (
+                <div className="flex flex-col h-full justify-center">
+                  {activeUnitPos && board[activeUnitPos.y][activeUnitPos.x].unit && (
+                    <div className="mb-3 p-2 bg-stone-800 rounded-lg border border-stone-600 text-xs flex justify-between items-center text-white">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{board[activeUnitPos.y][activeUnitPos.x].unit?.appearance}</span>
+                        <span className="font-bold text-sm">{board[activeUnitPos.y][activeUnitPos.x].unit?.name}</span>
+                      </div>
+                      <div className="flex gap-2 sm:gap-4 text-stone-300">
+                        <span><span className="text-stone-500">HP</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.hp}/{board[activeUnitPos.y][activeUnitPos.x].unit?.maxHp}</span>
+                        <span><span className="text-stone-500">ATK</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.atk}</span>
+                        <span><span className="text-stone-500">DEF</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.def}</span>
+                        <span><span className="text-stone-500">MOV</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.mov}</span>
+                        <span><span className="text-stone-500">RNG</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.rng}</span>
+                        <span><span className="text-stone-500">SNS</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.sense}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {activeUnitPos ? (
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold text-amber-400">
+                              {activeAction === 'move' ? '移動先を選択' : '攻撃対象を選択'}
+                            </span>
+                            <button 
+                              onClick={skipAction}
+                              className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs font-bold"
+                            >
+                              {activeAction === 'move' ? '移動しない' : '攻撃しない (待機)'}
+                            </button>
+                            <button 
+                              onClick={() => { setActiveUnitPos(null); setActiveAction(null); setHighlightedCells([]); }}
+                              className="p-1 text-stone-400 hover:text-white"
+                            >
+                              <X className="w-5 h-5"/>
+                            </button>
+                          </div>
+                      ) : (
+                          <span className="text-sm text-stone-300">未行動のユニットをタップして指示を出してください</span>
+                      )}
+                    </div>
+                    <div className="px-4 py-2 bg-blue-900/50 border border-blue-500/50 rounded-lg text-blue-200 text-sm font-bold shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                      PLAYER TURN
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
