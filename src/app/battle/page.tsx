@@ -574,6 +574,11 @@ export default function BattlePage() {
                     const isVisible = visibleCells.has(`${x},${y}`);
                     const isHiddenEnemy = phase === 'battle' && cell.unit && cell.unit.isEnemy && !isVisible;
                     
+                    if (phase === 'battle' && !isVisible) {
+                      cellBg = "bg-slate-200";
+                      cellBorder = "border-2 border-slate-300";
+                    }
+                    
                     const isHighlighted = highlightedCells.some(c => c.x === x && c.y === y);
                     const isActive = activeUnitPos?.x === x && activeUnitPos?.y === y;
 
@@ -606,12 +611,6 @@ export default function BattlePage() {
                             <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-sm ${cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'}`}>
                               {cell.unit.hp}
                             </div>
-                          </div>
-                        )}
-                        
-                        {isHiddenEnemy && (
-                          <div className="text-slate-300 pointer-events-none">
-                            <EyeOff className="w-6 h-6 sm:w-8 sm:h-8" />
                           </div>
                         )}
                         
