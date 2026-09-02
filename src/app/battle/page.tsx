@@ -132,6 +132,28 @@ export default function BattlePage() {
     return reachable;
   }, []);
 
+  // Damage calculation with Flanking Bonus
+  const calculateDamage = useCallback((attacker: BattleUnit, attackerX: number, attackerY: number, defender: BattleUnit, defX: number, defY: number, currentBoard: CellState[][]) => {
+    const neighbors = [
+      {x: defX, y: defY - 1}, {x: defX, y: defY + 1},
+      {x: defX - 1, y: defY}, {x: defX + 1, y: defY}
+    ];
+    let supportCount = 0;
+    for (const n of neighbors) {
+      if (n.x >= 0 && n.x < 7 && n.y >= 0 && n.y < 7) {
+        if (n.x === attackerX && n.y === attackerY) continue; // Skip the attacker
+        const u = currentBoard[n.y][n.x].unit;
+        if (u && u.isEnemy === attacker.isEnemy) {
+          supportCount++;
+        }
+      }
+    }
+    
+    const baseDamage = Math.max(1, attacker.atk - defender.def);
+    const bonusDamage = supportCount * 15; // +15 damage per supporting ally!
+    return { damage: baseDamage + bonusDamage, supportCount };
+  }, []);
+
   // Calculate visible cells based on all friendly units' SENSE
   const visibleCells = useMemo(() => {
     if (phase !== 'battle') return new Set<string>();
@@ -207,21 +229,25 @@ export default function BattlePage() {
               return;
            }
 
-           const damage = Math.max(1, attacker.atk - defender.def);
+           const { damage, supportCount } = calculateDamage(attacker, activeUnitPos.x, activeUnitPos.y, defender, x, y, board);
            const newHp = defender.hp - damage;
            
            const newBoard = [...board];
            newBoard[y] = [...newBoard[y]];
            
+           let alertMsg = supportCount > 0 
+             ? `包囲ボーナス！(+${supportCount * 15}) 敵に ${damage} ダメージ！` 
+             : `敵に ${damage} ダメージ！`;
+           
            if (newHp <= 0) {
              // Enemy defeated
-             alert(`敵に ${damage} ダメージ！撃破しました！`);
+             alertMsg += '撃破しました！';
+             alert(alertMsg);
              newBoard[y][x] = { ...newBoard[y][x], unit: null };
              if (defender.isCommander) { 
                setPhase('result');
                setResultMessage('VICTORY! 敵将を討ち取りました！');
              } else {
-               // Check if all enemies are dead (currently only 1 test enemy)
                const hasEnemies = newBoard.some(r => r.some(c => c.unit && c.unit.isEnemy));
                if (!hasEnemies) {
                  setPhase('result');
@@ -229,10 +255,10 @@ export default function BattlePage() {
                }
              }
            } else {
-             alert(`敵に ${damage} ダメージ！（残りHP: ${newHp}）`);
+             alertMsg += `（残りHP: ${newHp}）`;
+             alert(alertMsg);
              newBoard[y][x] = { ...newBoard[y][x], unit: { ...defender, hp: newHp } };
            }
-
            // End attacker's turn
            newBoard[activeUnitPos.y] = [...newBoard[activeUnitPos.y]];
            newBoard[activeUnitPos.y][activeUnitPos.x] = { ...newBoard[activeUnitPos.y][activeUnitPos.x], unit: { ...attacker, hasActed: true } };
@@ -403,18 +429,22 @@ export default function BattlePage() {
 
           // 1. Move phase
           // Find player units
-          const playerUnits: {x: number, y: number}[] = [];
+          const playerUnits: {x: number, y: number, unit: BattleUnit}[] = [];
           boardRef.current.forEach((r, y) => r.forEach((c, x) => {
-            if (c.unit && !c.unit.isEnemy) playerUnits.push({x, y});
+            if (c.unit && !c.unit.isEnemy) playerUnits.push({x, y, unit: c.unit});
           }));
 
           if (playerUnits.length === 0) continue;
 
-          // Find closest player unit by Manhattan distance
+          // Find target by evaluating distance and commander status
           playerUnits.sort((a, b) => {
              const distA = Math.abs(a.x - ex) + Math.abs(a.y - ey);
              const distB = Math.abs(b.x - ex) + Math.abs(b.y - ey);
-             return distA - distB;
+             
+             // Huge penalty to distance score if it's the commander, making them the primary target
+             const scoreA = distA + (a.unit.isCommander ? -100 : 0);
+             const scoreB = distB + (b.unit.isCommander ? -100 : 0);
+             return scoreA - scoreB;
           });
           const target = playerUnits[0];
 
@@ -449,18 +479,17 @@ export default function BattlePage() {
 
           // 2. Attack phase
           const attackable = calculateBFS(ex, ey, enemyUnit.rng, false, boardRef.current);
-          // See if any player unit is in attackable cells
           let targetToAttack = null;
           for (const cell of attackable) {
              const u = boardRef.current[cell.y][cell.x].unit;
              if (u && !u.isEnemy) {
                targetToAttack = { x: cell.x, y: cell.y, unit: u };
-               break; // just attack the first one we find
+               if (u.isCommander) break; // Prefer commander
              }
           }
 
           if (targetToAttack) {
-             const damage = Math.max(1, enemyUnit.atk - targetToAttack.unit.def);
+             const { damage, supportCount } = calculateDamage(enemyUnit, ex, ey, targetToAttack.unit, targetToAttack.x, targetToAttack.y, boardRef.current);
              const newHp = targetToAttack.unit.hp - damage;
              
              newBoard = [...boardRef.current];
