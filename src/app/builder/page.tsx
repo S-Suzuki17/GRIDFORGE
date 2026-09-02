@@ -145,7 +145,7 @@ export default function BuilderPage() {
                 {member ? (
                   <div className="flex items-center gap-4 w-full">
                     <div className="text-4xl bg-slate-50 w-16 h-16 flex items-center justify-center rounded-2xl border-2 border-slate-200 shadow-inner">
-                      {member.appearance}
+                      {member.appearance.startsWith('/') ? <img src={member.appearance} className="w-full h-full object-cover rounded-2xl" /> : member.appearance}
                     </div>
                     <div className="flex-1">
                       <div className="font-bold text-slate-800 flex items-center justify-between">
@@ -191,7 +191,7 @@ export default function BuilderPage() {
                 creatures.map(c => (
                   <div key={c.id} className="bg-white border-2 border-slate-200 shadow-sm rounded-2xl p-3 flex items-center justify-between group hover:border-blue-300 transition-colors">
                     <div className="flex items-center gap-3">
-                       <div className="text-3xl bg-slate-50 w-12 h-12 flex items-center justify-center rounded-xl border border-slate-200">{c.appearance}</div>
+                       <div className="text-3xl bg-slate-50 w-12 h-12 flex items-center justify-center rounded-xl border border-slate-200">{c.appearance.startsWith('/') ? <img src={c.appearance} className="w-full h-full object-cover rounded-xl" /> : c.appearance}</div>
                        <div>
                          <div className="font-bold text-sm text-slate-800">{c.name} <span className="text-amber-500 font-black ml-2">{c.cost}pt</span></div>
                          <div className="text-[10px] font-medium text-slate-500 mt-1">

@@ -8,7 +8,13 @@ import { ArrowLeft, Save, Sparkles, ChevronRight, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { Toast } from '../../components/Toast';
 
-const appearances = ['👾', '👻', '🤖', '👺', '👽', '🐉', '🦖', '🦇', '🦋', '🦂'];
+const appearances = [
+  '/creatures/base.jpg',
+  '/creatures/knight.jpg',
+  '/creatures/mage.jpg',
+  '/creatures/ninja.jpg',
+  '/creatures/heavy.jpg'
+];
 const MAX_COST = 600;
 
 export default function CreatorPage() {
@@ -132,11 +138,13 @@ export default function CreatorPage() {
           </div>
           <div className="w-24 flex flex-col items-center">
             <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Icon</h2>
-            <button className="text-5xl w-20 h-20 bg-slate-50 border-2 border-slate-200 rounded-2xl flex items-center justify-center relative group hover:border-blue-400 transition-colors">
-              {appearance}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border-4 border-slate-200 rounded-2xl shadow-xl flex-wrap justify-center items-center p-2 hidden group-hover:flex w-48 z-20">
+            <button className="w-20 h-20 bg-slate-50 border-2 border-slate-200 rounded-2xl flex items-center justify-center relative group hover:border-blue-400 transition-colors">
+              {appearance.startsWith('/') ? <img src={appearance} className="w-full h-full object-cover rounded-xl" /> : <span className="text-5xl">{appearance}</span>}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border-4 border-slate-200 rounded-2xl shadow-xl flex-wrap justify-center items-center p-2 hidden group-hover:flex w-64 z-20 gap-2">
                  {appearances.map(app => (
-                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:bg-slate-100 rounded-xl p-2 text-3xl transition-colors">{app}</div>
+                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:scale-110 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all w-16 h-16">
+                      {app.startsWith('/') ? <img src={app} className="w-full h-full object-cover" /> : <span className="text-3xl flex items-center justify-center w-full h-full">{app}</span>}
+                   </div>
                  ))}
               </div>
             </button>

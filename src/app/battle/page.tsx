@@ -97,7 +97,7 @@ export default function BattlePage() {
 
     const commander: BattleUnit = {
       id: 'commander_player', isEnemy: false, isCommander: true,
-      name: 'PLAYER', appearance: '👑', hp: 100, maxHp: 100, atk: 15, def: 5,
+      name: 'PLAYER', appearance: '/creatures/base.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
       mov: 2, rng: 2, sense: 2, hasActed: false
     };
 
@@ -357,7 +357,7 @@ export default function BattlePage() {
       isEnemy: true,
       isCommander: false,
       name: `CPU兵 ${i+1}`,
-      appearance: ['👾', '👻', '🤖', '👺', '👽'][Math.floor(Math.random() * 5)],
+      appearance: ['/creatures/base.jpg', '/creatures/knight.jpg', '/creatures/mage.jpg', '/creatures/ninja.jpg', '/creatures/heavy.jpg'][Math.floor(Math.random() * 5)],
       hp: 1, maxHp: 1, atk: 0, def: 0, mov: 1, rng: 1, sense: 0,
       hasActed: false
     }));
@@ -403,7 +403,7 @@ export default function BattlePage() {
     const enemyUnits: BattleUnit[] = [
       {
         id: 'commander_enemy', isEnemy: true, isCommander: true,
-        name: 'CPU大将', appearance: '👹', hp: 100, maxHp: 100, atk: 15, def: 5,
+        name: 'CPU大将', appearance: '/creatures/heavy.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
         mov: 2, rng: 2, sense: 2, hasActed: false
       },
       ...enemies
@@ -667,7 +667,7 @@ export default function BattlePage() {
                         
                         {cell.unit && !isHiddenEnemy && (
                           <div className={`text-2xl sm:text-4xl w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white border-4 flex items-center justify-center rounded-full shadow-[0_4px_0_rgba(0,0,0,0.1)] relative select-none transform transition-transform ${cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'} ${cell.unit.hasActed ? 'opacity-50 grayscale scale-95' : 'hover:scale-105'} ${isActive ? 'scale-110 -translate-y-1 shadow-[0_6px_0_rgba(0,0,0,0.15)]' : ''}`}>
-                            {cell.unit.appearance}
+                            {cell.unit.appearance.startsWith('/') ? <img src={cell.unit.appearance} className="w-full h-full object-cover rounded-full" /> : cell.unit.appearance}
                             <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-sm ${cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'}`}>
                               {cell.unit.hp}
                             </div>
@@ -699,7 +699,7 @@ export default function BattlePage() {
                           selectedToPlace?.id === unit.id ? 'bg-amber-50 border-amber-400 -translate-y-2 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        <div className="text-3xl mb-1">{unit.appearance}</div>
+                        <div className="text-3xl mb-1 flex items-center justify-center h-10">{unit.appearance.startsWith('/') ? <img src={unit.appearance} className="w-10 h-10 object-cover rounded-full" /> : unit.appearance}</div>
                         <div className="text-[10px] font-black text-slate-700 truncate">{unit.isCommander ? '大将' : unit.name}</div>
                       </div>
                     ))}
@@ -722,7 +722,7 @@ export default function BattlePage() {
                   {displayUnit && (
                     <div className={`mb-4 p-3 rounded-2xl border-2 text-sm flex flex-wrap justify-between items-center shadow-inner ${displayUnit.isEnemy ? 'bg-rose-50 border-rose-200 text-rose-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center border-2 border-slate-200 shadow-sm">{displayUnit.appearance}</span>
+                        <span className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center border-2 border-slate-200 shadow-sm">{displayUnit.appearance.startsWith('/') ? <img src={displayUnit.appearance} className="w-full h-full object-cover rounded-full" /> : displayUnit.appearance}</span>
                         <span className="font-black text-lg flex items-center gap-2">
                           {displayUnit.name}
                           {displayUnit.isEnemy && <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full">ENEMY</span>}
