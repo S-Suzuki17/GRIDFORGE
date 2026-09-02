@@ -247,6 +247,10 @@ export default function BattlePage() {
 
       // Select a friendly unit
       if (cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed) {
+        if (activeAction === 'attack') {
+          alert('移動完了後は、攻撃対象を選択するか待機してください。');
+          return;
+        }
         if (activeUnitPos?.x === x && activeUnitPos?.y === y) {
           // Deselect
           setActiveUnitPos(null);
@@ -685,12 +689,14 @@ export default function BattlePage() {
                             >
                               {activeAction === 'move' ? '移動しない' : '攻撃しない (待機)'}
                             </button>
-                            <button 
-                              onClick={() => { setActiveUnitPos(null); setActiveAction(null); setHighlightedCells([]); }}
-                              className="p-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-colors"
-                            >
-                              <X className="w-5 h-5"/>
-                            </button>
+                            {activeAction === 'move' && (
+                              <button 
+                                onClick={() => { setActiveUnitPos(null); setActiveAction(null); setHighlightedCells([]); }}
+                                className="p-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-colors"
+                              >
+                                <X className="w-5 h-5"/>
+                              </button>
+                            )}
                           </div>
                       ) : (
                           <span className="text-sm font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border-2 border-slate-100">未行動のユニットをタップして指示を出してください</span>
