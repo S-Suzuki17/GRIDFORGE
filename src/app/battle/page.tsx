@@ -43,6 +43,19 @@ export default function BattlePage() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   
+  const [inspectedUnitId, setInspectedUnitId] = useState<string | null>(null);
+  const inspectedUnit = useMemo(() => {
+    if (!inspectedUnitId) return null;
+    for (const row of board) {
+      for (const cell of row) {
+         if (cell.unit && cell.unit.id === inspectedUnitId) return cell.unit;
+      }
+    }
+    return null;
+  }, [inspectedUnitId, board]);
+
+  const displayUnit = inspectedUnit || (activeUnitPos ? board[activeUnitPos.y][activeUnitPos.x].unit : null);
+  
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setToastVisible(true);
@@ -205,6 +218,14 @@ export default function BattlePage() {
     }
 
     if (phase === 'battle') {
+      const isVisible = visibleCells.has(`${x},${y}`);
+      const isHiddenEnemy = cell.unit?.isEnemy && !isVisible;
+      if (cell.unit && !isHiddenEnemy) {
+        setInspectedUnitId(cell.unit.id);
+      }
+
+      if (currentTurn !== 'player') return;
+
       const isHighlighted = highlightedCells.some(c => c.x === x && c.y === y);
 
       if (activeAction === 'move' && activeUnitPos && isHighlighted) {
@@ -698,19 +719,22 @@ export default function BattlePage() {
 
               {phase === 'battle' && (
                 <div className="flex flex-col h-full justify-center px-2">
-                  {activeUnitPos && board[activeUnitPos.y][activeUnitPos.x].unit && (
-                    <div className="mb-4 p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 text-sm flex flex-wrap justify-between items-center text-slate-700 shadow-inner">
+                  {displayUnit && (
+                    <div className={`mb-4 p-3 rounded-2xl border-2 text-sm flex flex-wrap justify-between items-center shadow-inner ${displayUnit.isEnemy ? 'bg-rose-50 border-rose-200 text-rose-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center border-2 border-slate-200 shadow-sm">{board[activeUnitPos.y][activeUnitPos.x].unit?.appearance}</span>
-                        <span className="font-black text-lg">{board[activeUnitPos.y][activeUnitPos.x].unit?.name}</span>
+                        <span className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center border-2 border-slate-200 shadow-sm">{displayUnit.appearance}</span>
+                        <span className="font-black text-lg flex items-center gap-2">
+                          {displayUnit.name}
+                          {displayUnit.isEnemy && <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full">ENEMY</span>}
+                        </span>
                       </div>
                       <div className="flex gap-2 sm:gap-4 font-bold">
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-rose-500 mr-1">HP</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.hp}/{board[activeUnitPos.y][activeUnitPos.x].unit?.maxHp}</span>
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-amber-500 mr-1">ATK</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.atk}</span>
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-blue-500 mr-1">DEF</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.def}</span>
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-emerald-500 mr-1">MOV</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.mov}</span>
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-purple-500 mr-1">RNG</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.rng}</span>
-                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-cyan-500 mr-1">SNS</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.sense}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-rose-500 mr-1">HP</span>{displayUnit.hp}/{displayUnit.maxHp}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-amber-500 mr-1">ATK</span>{displayUnit.atk}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-blue-500 mr-1">DEF</span>{displayUnit.def}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-emerald-500 mr-1">MOV</span>{displayUnit.mov}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-purple-500 mr-1">RNG</span>{displayUnit.rng}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-cyan-500 mr-1">SNS</span>{displayUnit.sense}</span>
                       </div>
                     </div>
                   )}
