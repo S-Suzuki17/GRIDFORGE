@@ -97,7 +97,7 @@ export default function BattlePage() {
 
     const commander: BattleUnit = {
       id: 'commander_player', isEnemy: false, isCommander: true,
-      name: 'PLAYER', appearance: '/creatures/mecha.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
+      name: '自軍大将', appearance: '/creatures/commander_player.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
       mov: 2, rng: 2, sense: 2, hasActed: false
     };
 
@@ -403,7 +403,7 @@ export default function BattlePage() {
     const enemyUnits: BattleUnit[] = [
       {
         id: 'commander_enemy', isEnemy: true, isCommander: true,
-        name: 'CPU大将', appearance: '/creatures/heavy.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
+        name: '敵軍大将', appearance: '/creatures/commander_enemy.jpg', hp: 100, maxHp: 100, atk: 15, def: 5,
         mov: 2, rng: 2, sense: 2, hasActed: false
       },
       ...enemies
@@ -611,8 +611,14 @@ export default function BattlePage() {
           </div>
         ) : (
           <>
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 p-3 sm:p-5 bg-white rounded-3xl border-4 border-slate-200 shadow-xl mb-4 relative">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full py-4 [perspective:900px] overflow-visible">
+              <div 
+                className="grid grid-cols-7 gap-1 sm:gap-2.5 p-3 sm:p-5 bg-gradient-to-b from-amber-50 to-amber-100/80 rounded-[2.5rem] border-4 border-amber-200 shadow-[0_24px_40px_rgba(0,0,0,0.12),0_12px_0_0_#e2e8f0,0_16px_20px_rgba(0,0,0,0.08)] mb-4 relative transition-transform duration-300"
+                style={{
+                  transform: 'rotateX(24deg)',
+                  transformStyle: 'preserve-3d',
+                }}
+              >
                 {board.map((row, y) => 
                   row.map((cell, x) => {
                     let cellBg = "bg-slate-50"; 
@@ -653,30 +659,58 @@ export default function BattlePage() {
                       <div 
                         key={`${x}-${y}`} 
                         onClick={() => handleCellClick(x, y)}
-                        className={`w-11 h-11 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center transition-colors relative
+                        className={`w-11 h-11 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center transition-all relative shadow-[inset_0_-2px_4px_rgba(0,0,0,0.04),0_2px_0_#cbd5e1]
                           ${cellBg}
                           ${cellBorder}
                           ${highlightClass}
                           ${isActive ? 'ring-4 ring-amber-400 ring-offset-2 z-20' : ''}
                           ${phase === 'battle' && cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed && !isActive ? 'cursor-pointer hover:ring-4 hover:ring-blue-300 hover:ring-offset-1' : ''}
                         `}
+                        style={{
+                          transformStyle: 'preserve-3d',
+                        }}
                       >
                         {cell.type === 'wall' && (
-                          <div className={`text-2xl sm:text-4xl drop-shadow-sm ${phase === 'battle' && !isVisible ? 'opacity-40 grayscale' : ''}`}>🪨</div>
+                          <div 
+                            style={{
+                              transform: 'rotateX(-24deg) translateY(-4px) translateZ(8px)',
+                              transformStyle: 'preserve-3d'
+                            }}
+                            className={`text-2xl sm:text-4xl drop-shadow-md select-none transition-transform ${phase === 'battle' && !isVisible ? 'opacity-40 grayscale' : ''}`}
+                          >
+                            🪨
+                          </div>
                         )}
                         
                         {cell.unit && !isHiddenEnemy && (
-                          <div className={`text-2xl sm:text-4xl w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white border-4 flex items-center justify-center rounded-full shadow-[0_4px_0_rgba(0,0,0,0.1)] relative select-none transform transition-transform ${cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'} ${cell.unit.hasActed ? 'opacity-50 grayscale scale-95' : 'hover:scale-105'} ${isActive ? 'scale-110 -translate-y-1 shadow-[0_6px_0_rgba(0,0,0,0.15)]' : ''}`}>
+                          <div 
+                            style={{
+                              transform: `rotateX(-24deg) translateY(${isActive ? '-10px' : '-4px'}) translateZ(12px)`,
+                              transformStyle: 'preserve-3d'
+                            }}
+                            className={`text-2xl sm:text-4xl w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white border-4 flex items-center justify-center rounded-full shadow-[0_8px_12px_rgba(0,0,0,0.25)] relative select-none transition-all ${cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'} ${cell.unit.hasActed ? 'opacity-50 grayscale scale-95' : 'hover:scale-105'} ${isActive ? 'scale-110 shadow-[0_12px_20px_rgba(245,158,11,0.4)]' : ''}`}
+                          >
                             {cell.unit.appearance.startsWith('/') ? <img src={cell.unit.appearance} className="w-full h-full object-cover rounded-full" /> : cell.unit.appearance}
                             <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-sm ${cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'}`}>
                               {cell.unit.hp}
                             </div>
+                            {cell.unit.isCommander && (
+                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs sm:text-sm drop-shadow-md animate-bounce pointer-events-none">
+                                👑
+                              </div>
+                            )}
                           </div>
                         )}
                         
                         {/* Target reticle for attack phase if enemy is visible */}
                         {isHighlighted && activeAction === 'attack' && cell.unit && cell.unit.isEnemy && isVisible && (
-                          <div className="absolute inset-0 flex items-center justify-center text-rose-500 animate-pulse pointer-events-none z-30">
+                          <div 
+                            style={{
+                              transform: 'rotateX(-24deg) translateZ(14px)',
+                              transformStyle: 'preserve-3d'
+                            }}
+                            className="absolute inset-0 flex items-center justify-center text-rose-500 animate-pulse pointer-events-none z-30"
+                          >
                              <Crosshair className="w-10 h-10 sm:w-14 sm:h-14 drop-shadow-md" strokeWidth={3} />
                           </div>
                         )}
