@@ -1,17 +1,15 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
+import { M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
 
-export const viewport: Viewport = {
-  themeColor: "#000000",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+const mplus = M_PLUS_Rounded_1c({ 
+  weight: ['400', '700', '800'],
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "VS OMEGA - Creature Builder",
-  description: "Create and build your creature team.",
+  title: "GRIDFORGE",
+  description: "Tactical Grid Battle Game",
 };
 
 export default function RootLayout({
@@ -20,9 +18,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="h-full bg-slate-900 text-slate-100">
-        <main className="h-full">{children}</main>
+    <html lang="ja">
+      <body className={`${mplus.className} bg-amber-50 text-slate-800 antialiased h-screen w-screen overflow-hidden`}>
+        {children}
       </body>
     </html>
   );

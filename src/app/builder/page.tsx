@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useGameStore } from '../../hooks/useGameStore';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Check } from 'lucide-react';
 import { Creature } from '../../types/game';
 
 const MAX_TEAM_COST = 600;
@@ -13,8 +13,6 @@ export default function BuilderPage() {
   const [teamSize, setTeamSize] = useState<number>(3); // Default 3 slots visually
   const [selectedTeam, setSelectedTeam] = useState<(Creature | null)[]>(Array(5).fill(null));
   
-  // To handle multiple saved teams in UI, let's just make it simple: saving a team creates a new one or overwrites.
-  // We'll add a team name state.
   const [teamName, setTeamName] = useState('マイチーム');
 
   const handleSizeChange = (size: number) => {
@@ -76,47 +74,47 @@ export default function BuilderPage() {
   if (!isLoaded) return null;
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
-        <Link href="/" className="p-2 bg-slate-800 rounded-full hover:bg-slate-700">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="flex flex-col h-full max-w-5xl mx-auto p-4 bg-amber-50">
+      <div className="flex items-center justify-between mb-6 pt-4">
+        <Link href="/" className="p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-slate-400 hover:shadow-md transition-all">
+          <ArrowLeft className="w-6 h-6 text-slate-700" />
         </Link>
-        <h1 className="text-2xl font-bold">チーム編成・図鑑</h1>
+        <h1 className="text-2xl font-bold text-slate-800">チーム編成・図鑑</h1>
         <button 
           onClick={handleSaveTeam}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-400 text-white rounded-2xl font-bold shadow-md hover:shadow-lg transition-all active:translate-y-1"
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-5 h-5" />
           新規チーム保存
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[calc(100vh-120px)]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[calc(100vh-120px)] pb-6">
         
         {/* Left: Team Builder */}
-        <section className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col">
+        <section className="bg-white p-6 rounded-3xl border-4 border-slate-200 flex flex-col shadow-sm">
           <div className="flex justify-between items-end mb-4">
             <div>
-              <h2 className="text-lg font-bold">編成</h2>
-              <div className="text-xs text-slate-400 mt-1">出撃枠: {teamSize}体</div>
+              <h2 className="text-xl font-bold text-slate-800">編成ボード</h2>
+              <div className="text-sm text-slate-500 font-medium mt-1">出撃枠: {teamSize}体</div>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-slate-400">総コスト</div>
-              <div className={`text-xl font-bold ${currentTeamCost > MAX_TEAM_COST ? 'text-red-400' : 'text-emerald-400'}`}>
-                {currentTeamCost} <span className="text-sm font-normal text-slate-400">/ {MAX_TEAM_COST}pt</span>
+            <div className="text-right bg-slate-50 px-4 py-2 rounded-2xl border-2 border-slate-200">
+              <span className="text-xs font-bold text-slate-400 block mb-1">総コスト</span>
+              <div className={`text-2xl font-black ${currentTeamCost > MAX_TEAM_COST ? 'text-red-500' : 'text-emerald-500'}`}>
+                {currentTeamCost} <span className="text-sm font-bold text-slate-400">/ {MAX_TEAM_COST}pt</span>
               </div>
             </div>
           </div>
           
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 bg-slate-100 p-2 rounded-2xl border-2 border-slate-200">
             {[1, 2, 3, 4, 5].map(size => (
               <button
                 key={size}
                 onClick={() => handleSizeChange(size)}
-                className={`flex-1 py-1 text-sm rounded-lg font-semibold transition-colors ${
+                className={`flex-1 py-2 text-sm rounded-xl font-bold transition-all ${
                   teamSize === size 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-900 text-slate-400 hover:bg-slate-700'
+                    ? 'bg-blue-500 text-white shadow-md transform -translate-y-0.5' 
+                    : 'bg-white text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 {size}枠
@@ -128,35 +126,35 @@ export default function BuilderPage() {
              type="text" 
              value={teamName}
              onChange={e => setTeamName(e.target.value)}
-             className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm mb-4"
+             className="w-full bg-slate-50 border-2 border-slate-200 text-slate-800 font-bold rounded-2xl p-3 text-lg mb-4 focus:outline-none focus:border-blue-400 transition-colors"
              placeholder="チーム名"
           />
 
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
             {selectedTeam.slice(0, teamSize).map((member, idx) => (
-              <div key={idx} className="bg-slate-900 border border-slate-700 rounded-xl p-3 min-h-[90px] flex items-center justify-between">
+              <div key={idx} className="bg-white border-2 border-slate-200 shadow-sm rounded-2xl p-3 min-h-[90px] flex items-center justify-between">
                 {member ? (
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="text-3xl bg-slate-800 w-12 h-12 flex items-center justify-center rounded-lg border border-slate-600">
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="text-4xl bg-slate-50 w-16 h-16 flex items-center justify-center rounded-2xl border-2 border-slate-200 shadow-inner">
                       {member.appearance}
                     </div>
                     <div className="flex-1">
-                      <div className="font-bold text-sm flex items-center justify-between">
+                      <div className="font-bold text-slate-800 flex items-center justify-between">
                         {member.name}
-                        <span className="text-amber-400 text-xs">{member.cost}pt</span>
+                        <span className="text-amber-500 font-black bg-amber-50 px-2 py-1 rounded-lg text-sm border border-amber-200">{member.cost} pt</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-1 flex gap-2">
-                        <span>H:{member.stats.hp} A:{member.stats.atk} D:{member.stats.def}</span>
-                        <span>M:{member.stats.mov} R:{member.stats.rng} S:{member.stats.sense}</span>
+                      <div className="text-xs text-slate-500 mt-2 flex gap-3 font-medium">
+                        <span className="bg-slate-100 px-2 py-1 rounded-md">HP:{member.stats.hp} ATK:{member.stats.atk} DEF:{member.stats.def}</span>
+                        <span className="bg-slate-100 px-2 py-1 rounded-md">MOV:{member.stats.mov} RNG:{member.stats.rng} SEN:{member.stats.sense}</span>
                       </div>
                     </div>
-                    <button onClick={() => handleClearSlot(idx)} className="p-2 text-red-400 hover:bg-red-400/20 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
+                    <button onClick={() => handleClearSlot(idx)} className="p-3 text-rose-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors">
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 ) : (
-                  <div className="w-full h-12 flex items-center justify-center text-slate-500 gap-2 border-2 border-dashed border-slate-700 rounded-lg">
-                    <span className="text-sm">右のボックスから追加</span>
+                  <div className="w-full h-16 flex items-center justify-center text-slate-400 gap-2 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50/50">
+                    <span className="text-sm font-bold">空きスロット（図鑑から追加）</span>
                   </div>
                 )}
               </div>
@@ -165,83 +163,87 @@ export default function BuilderPage() {
         </section>
 
         {/* Right: Box / Inventory & Saved Teams */}
-        <section className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">クリーチャー図鑑</h2>
-            <Link href="/creator" className="flex items-center gap-1 text-sm bg-emerald-600/20 text-emerald-400 px-3 py-1 rounded-full hover:bg-emerald-600/40">
-              <Plus className="w-4 h-4" /> 新規作成
-            </Link>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 gap-2 content-start mb-6">
-            {creatures.length === 0 ? (
-              <div className="text-slate-500 text-center py-6 text-sm">
-                クリーチャーがいません。
-              </div>
-            ) : (
-              creatures.map(c => (
-                <div key={c.id} className="bg-slate-900 border border-slate-700 rounded-lg p-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                     <div className="text-2xl">{c.appearance}</div>
-                     <div>
-                       <div className="font-bold text-xs">{c.name} <span className="text-amber-400 ml-1">{c.cost}pt</span></div>
-                       <div className="text-[10px] text-slate-400">
-                         H:{c.stats.hp} A:{c.stats.atk} D:{c.stats.def} | M:{c.stats.mov} R:{c.stats.rng} S:{c.stats.sense}
+        <section className="flex flex-col gap-6 h-full">
+          {/* Box / Inventory */}
+          <div className="bg-white p-6 rounded-3xl border-4 border-slate-200 flex flex-col shadow-sm flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-800">図鑑（手札）</h2>
+              <Link href="/creator" className="flex items-center gap-1 text-sm bg-emerald-100 text-emerald-700 font-bold px-4 py-2 rounded-xl hover:bg-emerald-200 transition-colors">
+                <Plus className="w-4 h-4" /> 新規作成
+              </Link>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 gap-3 content-start">
+              {creatures.length === 0 ? (
+                <div className="text-slate-400 text-center py-8 text-sm font-bold bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  クリーチャーがいません。<br/>まずは作成しましょう！
+                </div>
+              ) : (
+                creatures.map(c => (
+                  <div key={c.id} className="bg-white border-2 border-slate-200 shadow-sm rounded-2xl p-3 flex items-center justify-between group hover:border-blue-300 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <div className="text-3xl bg-slate-50 w-12 h-12 flex items-center justify-center rounded-xl border border-slate-200">{c.appearance}</div>
+                       <div>
+                         <div className="font-bold text-sm text-slate-800">{c.name} <span className="text-amber-500 font-black ml-2">{c.cost}pt</span></div>
+                         <div className="text-[10px] font-medium text-slate-500 mt-1">
+                           H:{c.stats.hp} A:{c.stats.atk} D:{c.stats.def} | M:{c.stats.mov} R:{c.stats.rng} S:{c.stats.sense}
+                         </div>
                        </div>
-                     </div>
+                    </div>
+                    <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleSelectSlot(c)}
+                        className="px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-xs font-bold shadow-sm active:translate-y-1"
+                      >
+                        配置
+                      </button>
+                      <button onClick={() => { if (confirm('削除しますか？')) deleteCreature(c.id); }} 
+                        className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button 
-                      onClick={() => handleSelectSlot(c)}
-                      className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs font-bold"
-                    >
-                      配置
-                    </button>
-                    <button onClick={() => { if (confirm('削除しますか？')) deleteCreature(c.id); }} 
-                      className="p-1 text-slate-500 hover:text-red-400"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
 
-          <hr className="border-slate-700 mb-4" />
-
-          <h2 className="text-sm font-bold mb-3 text-slate-300">保存済みチーム (バトル用)</h2>
-          <div className="overflow-y-auto max-h-40 space-y-2">
-            {teams.length === 0 ? (
-              <div className="text-slate-500 text-center py-2 text-xs">保存されたチームはありません。</div>
-            ) : (
-              teams.map(t => (
-                <div key={t.id} className={`p-3 rounded-lg border flex items-center justify-between ${activeTeamId === t.id ? 'bg-amber-900/40 border-amber-500' : 'bg-slate-900 border-slate-700'}`}>
-                  <div>
-                    <div className="font-bold text-sm flex items-center gap-2">
-                      {t.name}
-                      {activeTeamId === t.id && <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded">選択中</span>}
+          {/* Saved Teams */}
+          <div className="bg-white p-6 rounded-3xl border-4 border-slate-200 flex flex-col shadow-sm h-64">
+            <h2 className="text-lg font-bold mb-4 text-slate-800">保存済みチーム (バトル用)</h2>
+            <div className="overflow-y-auto space-y-3 pr-2">
+              {teams.length === 0 ? (
+                <div className="text-slate-400 text-center py-6 text-xs font-bold">保存されたチームはありません。</div>
+              ) : (
+                teams.map(t => (
+                  <div key={t.id} className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-colors ${activeTeamId === t.id ? 'bg-amber-50 border-amber-400' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                    <div>
+                      <div className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        {t.name}
+                        {activeTeamId === t.id && <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-md font-bold flex items-center gap-1"><Check className="w-3 h-3"/>選択中</span>}
+                      </div>
+                      <div className="text-xs text-slate-500 font-medium mt-1">
+                        {t.creatures.length}体編成 / 計 {t.creatures.reduce((sum,c)=>sum+c.cost, 0)}pt
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {t.creatures.length}体編成 / 計 {t.creatures.reduce((sum,c)=>sum+c.cost, 0)}pt
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setActiveTeamId(t.id)}
+                        className={`px-4 py-2 text-xs rounded-xl font-bold shadow-sm active:translate-y-1 transition-colors ${activeTeamId === t.id ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      >
+                        {activeTeamId === t.id ? '出撃セット' : '選択'}
+                      </button>
+                      <button onClick={() => { if (confirm('チームを削除しますか？')) deleteTeam(t.id); }} 
+                        className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setActiveTeamId(t.id)}
-                      className={`px-3 py-1 text-xs rounded font-bold ${activeTeamId === t.id ? 'bg-amber-600' : 'bg-slate-700 hover:bg-slate-600'}`}
-                    >
-                      {activeTeamId === t.id ? '出撃セット' : '選択'}
-                    </button>
-                    <button onClick={() => { if (confirm('チームを削除しますか？')) deleteTeam(t.id); }} 
-                      className="p-1 text-slate-500 hover:text-red-400"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </section>
 

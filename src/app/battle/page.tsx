@@ -510,51 +510,62 @@ export default function BattlePage() {
   if (!isLoaded || board.length === 0) return null;
 
   return (
-    <div className="flex flex-col h-full bg-stone-950 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-20 pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(circle at center, #78350f 0%, #1c1917 100%)' }} />
+    <div className="flex flex-col h-full bg-amber-50 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-40 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(circle at center, #fef3c7 0%, #fdf8f6 100%)' }} />
            
       <div className="relative z-10 p-4 max-w-4xl mx-auto w-full h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <Link href="/" className="p-2 bg-stone-800 rounded-full hover:bg-stone-700 text-stone-300">
-            <ArrowLeft className="w-5 h-5" />
+          <Link href="/" className="p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-slate-400 hover:shadow-md transition-all">
+            <ArrowLeft className="w-6 h-6 text-slate-700" />
           </Link>
           <div className="text-center">
-            <h1 className="text-xl sm:text-2xl font-bold text-amber-500 tracking-widest drop-shadow-md">
-              WASTELAND
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-wider">
+              GRIDFORGE
             </h1>
-            <div className="text-stone-400 text-sm font-semibold">
+            <div className="text-slate-500 text-sm font-bold mt-1">
               {phase === 'placement' ? '— 配置フェーズ —' : phase === 'battle' ? '— バトルフェーズ —' : '— 決着 —'}
             </div>
           </div>
           {phase === 'placement' ? (
-            <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-3 py-2 bg-stone-800 hover:bg-stone-700 rounded-lg text-sm text-stone-300">
+            <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-slate-200 hover:border-slate-400 rounded-xl text-sm font-bold text-slate-600 shadow-sm transition-all active:translate-y-1">
               <RefreshCw className="w-4 h-4" /> 地形変更
             </button>
           ) : phase === 'battle' ? (
-            <button onClick={endTurn} className="px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg font-bold text-sm text-white">
+            <button onClick={endTurn} className="px-5 py-2 bg-blue-500 hover:bg-blue-400 rounded-xl font-bold text-sm text-white shadow-md active:translate-y-1 transition-all">
               ターン終了
             </button>
-          ) : <div className="w-10"></div>}
+          ) : <div className="w-24"></div>}
         </div>
 
         {phase === 'result' ? (
           <div className="flex-1 flex flex-col items-center justify-center">
-            <h2 className="text-4xl font-bold text-amber-400 mb-6 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">{resultMessage}</h2>
-            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-stone-800 hover:bg-stone-700 rounded-lg font-bold">
+            <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-8 drop-shadow-sm">{resultMessage}</h2>
+            <button onClick={() => window.location.reload()} className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white text-xl rounded-2xl font-bold shadow-lg hover:shadow-xl active:translate-y-1 transition-all">
               もう一度プレイ
             </button>
           </div>
         ) : (
           <>
             <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 p-2 sm:p-4 bg-stone-900 rounded-xl border-4 border-stone-800 shadow-2xl mb-4 relative">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 p-3 sm:p-5 bg-white rounded-3xl border-4 border-slate-200 shadow-xl mb-4 relative">
                 {board.map((row, y) => 
                   row.map((cell, x) => {
-                    let cellBg = "bg-stone-800/80"; 
-                    if (cell.isPlayerArea) cellBg = phase === 'placement' ? "bg-blue-900/40 border-blue-500/50 cursor-pointer hover:bg-blue-800/60" : "bg-stone-800/80";
-                    if (cell.isEnemyArea) cellBg = "bg-red-900/10 border-red-900/20";
-                    if (cell.type === 'wall') cellBg = "bg-amber-900 border-amber-700 shadow-inner";
+                    let cellBg = "bg-slate-50"; 
+                    let cellBorder = "border-2 border-slate-200";
+
+                    if (cell.isPlayerArea) {
+                      cellBg = phase === 'placement' ? "bg-blue-50 hover:bg-blue-100 cursor-pointer" : "bg-slate-50";
+                      if (phase === 'placement') cellBorder = "border-2 border-blue-200 border-dashed";
+                    }
+                    if (cell.isEnemyArea) {
+                      cellBg = "bg-rose-50";
+                      cellBorder = "border-2 border-rose-100";
+                    }
+                    if (cell.type === 'wall') {
+                      cellBg = "bg-amber-100";
+                      cellBorder = "border-4 border-amber-300 shadow-sm";
+                    }
 
                     const isVisible = visibleCells.has(`${x},${y}`);
                     const isHiddenEnemy = phase === 'battle' && cell.unit && cell.unit.isEnemy && !isVisible;
@@ -565,44 +576,45 @@ export default function BattlePage() {
                     // Highlight colors
                     let highlightClass = '';
                     if (isHighlighted) {
-                      if (activeAction === 'move') highlightClass = 'bg-cyan-900/60 border-cyan-400 cursor-pointer hover:bg-cyan-800';
-                      if (activeAction === 'attack') highlightClass = 'bg-red-900/60 border-red-500 cursor-pointer hover:bg-red-800';
+                      if (activeAction === 'move') highlightClass = 'bg-cyan-100 border-cyan-400 border-4 cursor-pointer hover:bg-cyan-200 shadow-inner z-10';
+                      if (activeAction === 'attack') highlightClass = 'bg-rose-100 border-rose-400 border-4 cursor-pointer hover:bg-rose-200 shadow-inner z-10';
                     }
 
                     return (
                       <div 
                         key={`${x}-${y}`} 
                         onClick={() => handleCellClick(x, y)}
-                        className={`w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-md border flex items-center justify-center transition-colors relative
+                        className={`w-11 h-11 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center transition-colors relative
                           ${cellBg}
+                          ${cellBorder}
                           ${highlightClass}
-                          ${isActive ? 'ring-4 ring-amber-400 z-10' : ''}
-                          ${phase === 'battle' && cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed && !isActive ? 'cursor-pointer hover:ring-2 hover:ring-amber-400' : ''}
+                          ${isActive ? 'ring-4 ring-amber-400 ring-offset-2 z-20' : ''}
+                          ${phase === 'battle' && cell.unit && !cell.unit.isEnemy && !cell.unit.hasActed && !isActive ? 'cursor-pointer hover:ring-4 hover:ring-blue-300 hover:ring-offset-1' : ''}
                         `}
                       >
                         {cell.type === 'wall' && (
-                          <div className={`text-2xl sm:text-4xl drop-shadow-lg ${phase === 'battle' && !isVisible ? 'opacity-30' : ''}`}>🪨</div>
+                          <div className={`text-2xl sm:text-4xl drop-shadow-sm ${phase === 'battle' && !isVisible ? 'opacity-40 grayscale' : ''}`}>🪨</div>
                         )}
                         
                         {cell.unit && !isHiddenEnemy && (
-                          <div className={`text-2xl sm:text-4xl drop-shadow-md relative select-none ${cell.unit.hasActed ? 'opacity-50 grayscale' : ''}`}>
+                          <div className={`text-2xl sm:text-4xl w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white border-4 flex items-center justify-center rounded-full shadow-[0_4px_0_rgba(0,0,0,0.1)] relative select-none transform transition-transform ${cell.unit.isEnemy ? 'border-rose-400' : 'border-blue-400'} ${cell.unit.hasActed ? 'opacity-50 grayscale scale-95' : 'hover:scale-105'} ${isActive ? 'scale-110 -translate-y-1 shadow-[0_6px_0_rgba(0,0,0,0.15)]' : ''}`}>
                             {cell.unit.appearance}
-                            <div className={`absolute -bottom-2 -right-2 text-[10px] sm:text-xs font-bold px-1 rounded text-white ${cell.unit.isEnemy ? 'bg-red-600' : 'bg-blue-600'}`}>
+                            <div className={`absolute -bottom-2 -right-1 text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-md text-white shadow-sm ${cell.unit.isEnemy ? 'bg-rose-500' : 'bg-blue-500'}`}>
                               {cell.unit.hp}
                             </div>
                           </div>
                         )}
                         
                         {isHiddenEnemy && (
-                          <div className="text-stone-700 opacity-30 pointer-events-none">
-                            <EyeOff className="w-6 h-6" />
+                          <div className="text-slate-300 pointer-events-none">
+                            <EyeOff className="w-6 h-6 sm:w-8 sm:h-8" />
                           </div>
                         )}
                         
                         {/* Target reticle for attack phase if enemy is visible */}
                         {isHighlighted && activeAction === 'attack' && cell.unit && cell.unit.isEnemy && isVisible && (
-                          <div className="absolute inset-0 flex items-center justify-center text-red-400 animate-pulse pointer-events-none">
-                             <Crosshair className="w-8 h-8 sm:w-12 sm:h-12" strokeWidth={3} />
+                          <div className="absolute inset-0 flex items-center justify-center text-rose-500 animate-pulse pointer-events-none z-30">
+                             <Crosshair className="w-10 h-10 sm:w-14 sm:h-14 drop-shadow-md" strokeWidth={3} />
                           </div>
                         )}
                       </div>
@@ -612,29 +624,29 @@ export default function BattlePage() {
               </div>
             </div>
 
-            <div className="bg-stone-900 border border-stone-700 p-4 rounded-xl min-h-[120px]">
+            <div className="bg-white border-4 border-slate-200 p-4 rounded-3xl min-h-[140px] shadow-sm">
               {phase === 'placement' && (
                 <div className="flex flex-col gap-3">
-                  <div className="flex gap-2 overflow-x-auto pb-2">
+                  <div className="flex gap-3 overflow-x-auto pb-3 px-2">
                     {pendingPlacement.map(unit => (
                       <div 
                         key={unit.id}
                         onClick={() => setSelectedToPlace(selectedToPlace?.id === unit.id ? null : unit)}
-                        className={`cursor-pointer min-w-[60px] p-2 rounded-lg border-2 text-center transition-all ${
-                          selectedToPlace?.id === unit.id ? 'bg-amber-600/30 border-amber-500' : 'bg-stone-800 border-stone-600'
+                        className={`cursor-pointer min-w-[70px] p-2 rounded-2xl border-4 text-center transition-all shadow-sm active:translate-y-1 ${
+                          selectedToPlace?.id === unit.id ? 'bg-amber-50 border-amber-400 -translate-y-2 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div className="text-3xl mb-1">{unit.appearance}</div>
-                        <div className="text-[10px] font-bold truncate">{unit.isCommander ? '大将' : unit.name}</div>
+                        <div className="text-[10px] font-black text-slate-700 truncate">{unit.isCommander ? '大将' : unit.name}</div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs text-stone-400">青いマスをタップして配置</span>
+                  <div className="flex justify-between items-center mt-1 px-2">
+                    <span className="text-sm font-bold text-slate-500">点線の青マスをタップして配置</span>
                     <button 
                       onClick={startBattle}
                       disabled={pendingPlacement.length > 0}
-                      className="px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-stone-700 disabled:text-stone-500 text-white font-bold rounded-lg transition-colors"
+                      className="px-6 py-3 bg-rose-500 hover:bg-rose-400 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-xl transition-all shadow-md active:translate-y-1 disabled:shadow-none disabled:active:translate-y-0"
                     >
                       バトル開始
                     </button>
@@ -643,20 +655,20 @@ export default function BattlePage() {
               )}
 
               {phase === 'battle' && (
-                <div className="flex flex-col h-full justify-center">
+                <div className="flex flex-col h-full justify-center px-2">
                   {activeUnitPos && board[activeUnitPos.y][activeUnitPos.x].unit && (
-                    <div className="mb-3 p-2 bg-stone-800 rounded-lg border border-stone-600 text-xs flex justify-between items-center text-white">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{board[activeUnitPos.y][activeUnitPos.x].unit?.appearance}</span>
-                        <span className="font-bold text-sm">{board[activeUnitPos.y][activeUnitPos.x].unit?.name}</span>
+                    <div className="mb-4 p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 text-sm flex flex-wrap justify-between items-center text-slate-700 shadow-inner">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center border-2 border-slate-200 shadow-sm">{board[activeUnitPos.y][activeUnitPos.x].unit?.appearance}</span>
+                        <span className="font-black text-lg">{board[activeUnitPos.y][activeUnitPos.x].unit?.name}</span>
                       </div>
-                      <div className="flex gap-2 sm:gap-4 text-stone-300">
-                        <span><span className="text-stone-500">HP</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.hp}/{board[activeUnitPos.y][activeUnitPos.x].unit?.maxHp}</span>
-                        <span><span className="text-stone-500">ATK</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.atk}</span>
-                        <span><span className="text-stone-500">DEF</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.def}</span>
-                        <span><span className="text-stone-500">MOV</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.mov}</span>
-                        <span><span className="text-stone-500">RNG</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.rng}</span>
-                        <span><span className="text-stone-500">SNS</span> {board[activeUnitPos.y][activeUnitPos.x].unit?.sense}</span>
+                      <div className="flex gap-2 sm:gap-4 font-bold">
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-rose-500 mr-1">HP</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.hp}/{board[activeUnitPos.y][activeUnitPos.x].unit?.maxHp}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-amber-500 mr-1">ATK</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.atk}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-blue-500 mr-1">DEF</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.def}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-emerald-500 mr-1">MOV</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.mov}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-purple-500 mr-1">RNG</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.rng}</span>
+                        <span className="bg-white px-2 py-1 rounded-lg border border-slate-200"><span className="text-cyan-500 mr-1">SNS</span>{board[activeUnitPos.y][activeUnitPos.x].unit?.sense}</span>
                       </div>
                     </div>
                   )}
@@ -664,27 +676,27 @@ export default function BattlePage() {
                     <div>
                       {activeUnitPos ? (
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-amber-400">
+                            <span className="text-base font-black text-amber-500 bg-amber-50 px-3 py-1 rounded-xl border-2 border-amber-200">
                               {activeAction === 'move' ? '移動先を選択' : '攻撃対象を選択'}
                             </span>
                             <button 
                               onClick={skipAction}
-                              className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs font-bold"
+                              className="px-4 py-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors"
                             >
                               {activeAction === 'move' ? '移動しない' : '攻撃しない (待機)'}
                             </button>
                             <button 
                               onClick={() => { setActiveUnitPos(null); setActiveAction(null); setHighlightedCells([]); }}
-                              className="p-1 text-stone-400 hover:text-white"
+                              className="p-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-colors"
                             >
                               <X className="w-5 h-5"/>
                             </button>
                           </div>
                       ) : (
-                          <span className="text-sm text-stone-300">未行動のユニットをタップして指示を出してください</span>
+                          <span className="text-sm font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border-2 border-slate-100">未行動のユニットをタップして指示を出してください</span>
                       )}
                     </div>
-                    <div className="px-4 py-2 bg-blue-900/50 border border-blue-500/50 rounded-lg text-blue-200 text-sm font-bold shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                    <div className="px-5 py-2 bg-blue-100 border-4 border-blue-300 rounded-2xl text-blue-700 text-lg font-black shadow-sm transform -rotate-2">
                       PLAYER TURN
                     </div>
                   </div>

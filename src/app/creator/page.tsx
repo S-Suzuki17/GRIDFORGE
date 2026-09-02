@@ -91,43 +91,43 @@ export default function CreatorPage() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
-        <Link href="/" className="p-2 bg-slate-800 rounded-full hover:bg-slate-700">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="flex flex-col h-full max-w-2xl mx-auto p-4 bg-amber-50">
+      <div className="flex items-center justify-between mb-6 pt-4">
+        <Link href="/" className="p-3 bg-white border-2 border-slate-200 rounded-2xl hover:border-slate-400 hover:shadow-md transition-all">
+          <ArrowLeft className="w-6 h-6 text-slate-700" />
         </Link>
-        <h1 className="text-2xl font-bold">クリーチャー作成</h1>
+        <h1 className="text-2xl font-bold text-slate-800">クリーチャー作成</h1>
         <button 
           onClick={handleSave}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-bold shadow-md hover:shadow-lg transition-all active:translate-y-1"
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-5 h-5" />
           保存
         </button>
       </div>
 
-      <div className="flex flex-col gap-6 overflow-y-auto pb-10">
+      <div className="flex flex-col gap-6 overflow-y-auto pb-10 px-2">
         
         {/* Basic Info */}
-        <section className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex gap-4 items-center">
+        <section className="bg-white p-6 rounded-3xl border-4 border-slate-200 flex gap-6 items-center shadow-sm">
           <div className="flex-1">
-            <h2 className="text-sm font-semibold text-slate-400 mb-2">名前</h2>
+            <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Name</h2>
             <input 
               type="text" 
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="クリーチャー名"
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-3 text-lg focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border-2 border-slate-200 text-slate-800 rounded-2xl p-4 text-xl font-bold focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
               maxLength={12}
             />
           </div>
           <div className="w-24 flex flex-col items-center">
-            <h2 className="text-sm font-semibold text-slate-400 mb-2">外見</h2>
-            <button className="text-4xl w-16 h-16 bg-slate-900 border border-slate-700 rounded-lg flex items-center justify-center relative overflow-hidden group">
+            <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Icon</h2>
+            <button className="text-5xl w-20 h-20 bg-slate-50 border-2 border-slate-200 rounded-2xl flex items-center justify-center relative group hover:border-blue-400 transition-colors">
               {appearance}
-              <div className="absolute inset-0 bg-black/80 flex-wrap justify-center items-center p-1 hidden group-hover:flex overflow-y-auto text-sm">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border-4 border-slate-200 rounded-2xl shadow-xl flex-wrap justify-center items-center p-2 hidden group-hover:flex w-48 z-20">
                  {appearances.map(app => (
-                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:bg-white/20 rounded p-1">{app}</div>
+                   <div key={app} onClick={(e) => { e.stopPropagation(); setAppearance(app); }} className="cursor-pointer hover:bg-slate-100 rounded-xl p-2 text-3xl transition-colors">{app}</div>
                  ))}
               </div>
             </button>
@@ -135,31 +135,30 @@ export default function CreatorPage() {
         </section>
 
         {/* Point Allocation */}
-        <section className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-          <div className="sticky top-0 bg-slate-800 pb-4 z-10 border-b border-slate-700 mb-4">
-            <div className="flex justify-between items-end mb-2">
+        <section className="bg-white p-6 rounded-3xl border-4 border-slate-200 shadow-sm relative">
+          <div className="sticky top-0 bg-white/90 backdrop-blur-sm pb-4 z-10 border-b-2 border-slate-100 mb-6 -mx-2 px-2 pt-2">
+            <div className="flex justify-between items-end mb-3">
               <div>
-                <h2 className="font-semibold">ステータス振り分け</h2>
-                <div className="text-xs text-slate-400">作成コスト: <strong className="text-white text-lg">{currentCost}</strong> pt (最大600pt)</div>
+                <h2 className="font-bold text-slate-800 text-lg">ステータス振り分け</h2>
+                <div className="text-sm text-slate-500 font-medium mt-1">作成コスト: <strong className="text-slate-800 text-xl">{currentCost}</strong> pt (最大600)</div>
               </div>
-              <div className="text-right">
-                <span className="text-sm text-slate-400">残り</span>
-                <span className={`text-2xl font-bold ml-2 ${remainingCost === 0 ? 'text-emerald-400' : 'text-blue-400'}`}>
+              <div className="text-right bg-slate-50 px-4 py-2 rounded-2xl border-2 border-slate-200">
+                <span className="text-xs font-bold text-slate-400 block mb-1">残りポイント</span>
+                <span className={`text-3xl font-black ${remainingCost === 0 ? 'text-emerald-500' : 'text-blue-500'}`}>
                   {remainingCost}
                 </span>
-                <span className="text-sm text-slate-400 ml-1">/ {MAX_COST} pt</span>
               </div>
             </div>
             {/* Progress bar */}
-            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+            <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden border-2 border-slate-200 shadow-inner">
               <div 
-                className={`h-full transition-all ${remainingCost === 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                className={`h-full transition-all duration-300 ${remainingCost === 0 ? 'bg-emerald-400' : 'bg-blue-400'}`}
                 style={{ width: `${(currentCost / MAX_COST) * 100}%` }}
               />
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             <StatRow 
               label="HP (体力)" 
               value={stats.hp} 
@@ -187,7 +186,7 @@ export default function CreatorPage() {
               canIncrease={remainingCost >= getNextCost('def', stats.def)}
               canDecrease={stats.def > 0}
             />
-            <hr className="border-slate-700" />
+            <hr className="border-2 border-slate-100 my-6" />
             <StatRow 
               label="MOV (移動力)" 
               value={stats.mov} 
@@ -232,15 +231,15 @@ function StatRow({
   return (
     <div className="flex items-center justify-between">
       <div>
-        <div className="font-semibold">{label}</div>
-        <div className="text-[10px] text-amber-400 font-bold tracking-wider">次UP: {nextCost}pt</div>
+        <div className="font-bold text-slate-700 text-lg">{label}</div>
+        <div className="text-xs text-amber-500 font-bold bg-amber-50 inline-block px-2 py-1 rounded-lg mt-1 border border-amber-200">次UP: {nextCost}pt</div>
       </div>
       
-      <div className="flex items-center gap-4 bg-slate-900 rounded-lg p-1 border border-slate-700">
+      <div className="flex items-center gap-3 bg-slate-50 rounded-2xl p-2 border-2 border-slate-200">
         <button 
           onClick={() => onUpdate(-1)}
           disabled={!canDecrease}
-          className="w-10 h-10 flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800 font-bold text-xl"
+          className="w-12 h-12 flex items-center justify-center rounded-xl bg-white border-2 border-slate-200 hover:border-rose-400 hover:text-rose-500 text-slate-400 shadow-sm disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all font-bold text-2xl active:translate-y-1"
         >
           -
         </button>
@@ -249,18 +248,18 @@ function StatRow({
             type="number"
             value={value}
             onChange={(e) => onDirectChange(e.target.value)}
-            className="w-16 py-1 text-center font-bold text-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded"
+            className="w-20 h-12 text-center font-black text-2xl bg-white text-slate-800 border-2 border-slate-200 focus:outline-none focus:border-blue-400 rounded-xl transition-colors"
             min={0}
           />
         ) : (
-          <div className="w-12 text-center font-bold text-xl">
+          <div className="w-16 text-center font-black text-2xl text-slate-800">
             {value}
           </div>
         )}
         <button 
           onClick={() => onUpdate(1)}
           disabled={!canIncrease}
-          className="w-10 h-10 flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800 font-bold text-xl"
+          className="w-12 h-12 flex items-center justify-center rounded-xl bg-white border-2 border-slate-200 hover:border-emerald-400 hover:text-emerald-500 text-slate-400 shadow-sm disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all font-bold text-2xl active:translate-y-1"
         >
           +
         </button>
